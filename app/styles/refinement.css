@@ -41,7 +41,17 @@ h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
 .brand:hover .brand__mark { transform: rotate(16deg); }
 .brand__mark::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: conic-gradient(from 18deg, currentColor 0 48deg, transparent 48deg 76deg, currentColor 76deg 152deg, transparent 152deg 194deg, currentColor 194deg 278deg, transparent 278deg 314deg, currentColor 314deg 360deg); -webkit-mask: radial-gradient(circle, transparent 57%, #000 60%); mask: radial-gradient(circle, transparent 57%, #000 60%); }
 .brand__mark::after { content: ""; position: absolute; inset: 16px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 0 4px rgba(157,242,31,.1); }
-.brand__mark > i { position: absolute; z-index: 2; right: 0; top: 20px; width: 9px; height: 2px; background: var(--acid); border-radius: 2px; }
+.brand__mark > i {
+  position: absolute;
+  z-index: 2;
+  left: 58%;
+  right: 11%;
+  top: calc(50% - 1px);
+  width: auto;
+  height: 2px;
+  background: var(--acid);
+  border-radius: 2px;
+}
 .brand__word {
   display: inline-flex;
   align-items: center;
