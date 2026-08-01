@@ -1,5 +1,5 @@
 import { ArrowRight, Clock3, Coins, FileWarning, SearchCheck, Target } from "lucide-react";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { listAnalyses } from "@/src/infrastructure/storage/repository";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { currentTimestamp } from "@/src/lib/time";

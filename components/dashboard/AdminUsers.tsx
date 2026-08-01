@@ -25,7 +25,7 @@ export function AdminUsers({ initialUsers }: { initialUsers: UserAccount[] }) {
     {users.map((user) => <article key={user.userId} className="admin-user-card">
       <div className="admin-user-card__identity">
         <span className={`admin-avatar admin-avatar--${user.role}`}>{user.displayName.slice(0, 2).toUpperCase()}</span>
-        <div><b>{user.displayName}</b><small>{user.email}</small><code>{user.userId.slice(0, 12)}…</code></div>
+        <div><b>{user.displayName}</b><small>{user.phone ?? user.email}</small><code>{user.userId.slice(0, 12)}…</code></div>
       </div>
       <div className="admin-user-card__metric"><small>Баланс</small><b><Coins size={15} /> {user.creditBalance}</b></div>
       <div className="admin-user-card__controls">

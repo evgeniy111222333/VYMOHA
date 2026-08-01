@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     const account = await ensureUserAccount(user);
     const ledger = await listCreditLedger(user.id, 20);
     return Response.json({ data: { account, ledger } }, { headers: { "cache-control": "private, no-store" } });

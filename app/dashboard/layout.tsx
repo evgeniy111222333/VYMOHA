@@ -1,4 +1,4 @@
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 

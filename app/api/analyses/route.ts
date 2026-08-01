@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     return Response.json({ data: await listAnalyses(user.id) }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return apiError(error); }
 }

@@ -1,16 +1,16 @@
 import { SecurityError } from "./security";
+import { getRequestAuthUser } from "@/src/auth/session";
 
 export type RequestUser = { id: string; email: string; name?: string };
 
-export function requestUser(request: Request): RequestUser | null {
-  const id = request.headers.get("oai-authenticated-user-id");
-  const email = request.headers.get("oai-authenticated-user-email");
-  if (!id || !email) return null;
-  return { id, email, name: decodeName(request) ?? undefined };
+export async function requestUser(request: Request): Promise<RequestUser | null> {
+  const user = await getRequestAuthUser(request);
+  if (!user) return null;
+  return { id: user.userId, email: user.email, name: user.displayName };
 }
 
-export function requireRequestUser(request: Request): RequestUser {
-  const user = requestUser(request);
+export async function requireRequestUser(request: Request): Promise<RequestUser> {
+  const user = await requestUser(request);
   if (!user) throw new HttpError(401, "Увійдіть, щоб продовжити.");
   return user;
 }
@@ -30,11 +30,4 @@ export function apiError(error: unknown): Response {
     ? message
     : "Сервіс тимчасово не зміг завершити операцію. Спробуйте ще раз.";
   return Response.json({ error: { message: safeMessage } }, { status: 500 });
-}
-
-function decodeName(request: Request): string | null {
-  if (request.headers.get("oai-authenticated-user-full-name-encoding") !== "percent-encoded-utf-8") return null;
-  const value = request.headers.get("oai-authenticated-user-full-name");
-  if (!value) return null;
-  try { return decodeURIComponent(value); } catch { return null; }
 }

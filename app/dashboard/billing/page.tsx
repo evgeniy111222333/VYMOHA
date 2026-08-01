@@ -1,5 +1,5 @@
 import { Coins, ReceiptText } from "lucide-react";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { BillingPanel } from "@/components/dashboard/BillingPanel";
 import { CREDIT_PACKAGES } from "@/src/domain/billing/packages";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";

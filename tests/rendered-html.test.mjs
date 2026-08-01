@@ -58,3 +58,16 @@ test("renders crawlable guide and legal pages", async () => {
   assert.equal(robots.status, 200);
   assert.match(await robots.text(), /Sitemap:/);
 });
+
+test("renders custom authentication and protects the dashboard", async () => {
+  const signIn = await render("/auth/sign-in");
+  assert.equal(signIn.status, 200);
+  const html = await signIn.text();
+  assert.match(html, /Раді бачити знову/);
+  assert.match(html, /Пошта або номер телефону/);
+  assert.doesNotMatch(html, /signin-with-chatgpt|OpenAI/i);
+
+  const dashboard = await fetch(`${baseUrl}/dashboard`, { redirect: "manual" });
+  assert.equal(dashboard.status, 307);
+  assert.match(dashboard.headers.get("location") ?? "", /\/auth\/sign-in\?return_to=/);
+});

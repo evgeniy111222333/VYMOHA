@@ -1,4 +1,4 @@
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { DocumentLibrary } from "@/components/dashboard/DocumentLibrary";
 import { DocumentUploader } from "@/components/dashboard/DocumentUploader";
 import { listDocuments } from "@/src/infrastructure/storage/repository";

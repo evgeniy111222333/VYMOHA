@@ -1,5 +1,5 @@
 import { BarChart3 } from "lucide-react";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { listAnalyses } from "@/src/infrastructure/storage/repository";
 
 export const dynamic = "force-dynamic";

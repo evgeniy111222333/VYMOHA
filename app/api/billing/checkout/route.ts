@@ -15,7 +15,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request);
     assertBodySize(request, 8_000);
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     await ensureUserAccount(user);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) throw new HttpError(422, "Оберіть пакет кредитів.");

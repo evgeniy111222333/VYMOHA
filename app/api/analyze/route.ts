@@ -21,7 +21,7 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: { message: "Перевірте введені дані.", details: parsed.error.issues } }, { status: 422 });
     }
 
-    const user = requestUser(request);
+    const user = await requestUser(request);
     const requestedTier: AnalysisTier = parsed.data.analysisTier ?? (parsed.data.deepAnalysis ? "deep" : "quick");
     const tier = getAnalysisTier(requestedTier);
     const ipHash = await sha256(clientAddress(request));

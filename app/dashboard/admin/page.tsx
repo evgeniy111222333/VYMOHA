@@ -1,5 +1,5 @@
 import { ShieldCheck, Users } from "lucide-react";
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { AdminUsers } from "@/components/dashboard/AdminUsers";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { listUserAccounts, requireAdmin } from "@/src/infrastructure/storage/admin";

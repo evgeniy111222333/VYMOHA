@@ -27,7 +27,7 @@ body { overflow-x: clip; background: var(--cream); }
 .site-header { height: 82px; color: #f5f2e8; background: rgba(9,11,9,.88); border-bottom: 1px solid rgba(255,255,255,.09); backdrop-filter: blur(24px) saturate(130%); }
 .site-header__inner { min-height: 82px; }
 .site-header .brand__word { color: #f5f2e8; font-size: 17px; letter-spacing: -.045em; }
-.site-header .brand__mark { width: 40px; height: 40px; padding: 0; border-radius: 11px; background: linear-gradient(145deg, #20241f, #0d0f0d 72%); }
+.site-header .brand__mark { width: 40px; height: 40px; padding: 0; border-radius: 50%; background: transparent; }
 .site-nav { gap: 42px; color: #a7aaa2; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
 .site-nav a:hover, .text-link:hover { color: var(--signal); }
 .site-nav a::after { background: var(--signal); }

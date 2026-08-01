@@ -15,7 +15,7 @@ const mutationSchema = z.discriminatedUnion("action", [
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     await ensureUserAccount(user);
     await requireAdmin(user.id);
     return Response.json({ data: await listUserAccounts() }, { headers: { "cache-control": "private, no-store" } });
@@ -26,7 +26,7 @@ export async function PATCH(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request);
     assertBodySize(request, 12_000);
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     await ensureUserAccount(user);
     await requireAdmin(user.id);
     const parsed = mutationSchema.safeParse(await request.json());

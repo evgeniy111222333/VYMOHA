@@ -11,6 +11,11 @@ export type RuntimeEnv = {
   APP_BASE_URL?: string;
   ADMIN_EMAILS?: string;
   ADMIN_STARTING_CREDITS?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_VERIFY_SERVICE_SID?: string;
 };
 
 let initialization: Promise<void> | null = null;
@@ -62,7 +67,8 @@ async function initialize(database: D1Database): Promise<void> {
       resource_id TEXT, ip_hash TEXT, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL
     )`),
     database.prepare(`CREATE TABLE IF NOT EXISTS user_accounts (
-      user_id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT NOT NULL,
+      user_id TEXT PRIMARY KEY, email TEXT NOT NULL, phone TEXT, display_name TEXT NOT NULL,
+      avatar_url TEXT, email_verified INTEGER NOT NULL DEFAULT 0, phone_verified INTEGER NOT NULL DEFAULT 0,
       role TEXT NOT NULL DEFAULT 'user', status TEXT NOT NULL DEFAULT 'active',
       credit_balance INTEGER NOT NULL DEFAULT 0, total_credits_purchased INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
@@ -85,6 +91,15 @@ async function initialize(database: D1Database): Promise<void> {
       credits_charged INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'reserved',
       created_at TEXT NOT NULL, completed_at TEXT
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS auth_identities (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL,
+      provider_subject TEXT NOT NULL, secret_hash TEXT, secret_salt TEXT,
+      verified_at TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS auth_sessions (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, user_agent_hash TEXT, revoked_at TEXT
+    )`),
   ]);
   await database.batch([
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_owner_user_id ON organizations(owner_user_id)"),
@@ -100,6 +115,7 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_user_created ON audit_events(user_id, created_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_resource ON audit_events(resource_type, resource_id)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_phone ON user_accounts(phone)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_user_accounts_role_status ON user_accounts(role, status)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_payment_orders_user_created ON payment_orders(user_id, created_at)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_provider_session ON payment_orders(provider_session_id)"),
@@ -107,6 +123,10 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_ledger_idempotency ON credit_ledger(idempotency_key)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_usage_analysis_id ON ai_usage(analysis_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage(user_id, created_at)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_identities_provider_subject ON auth_identities(provider, provider_subject)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
 }

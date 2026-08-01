@@ -12,7 +12,8 @@ export async function requireAdmin(userId: string): Promise<UserAccount> {
 
 export async function listUserAccounts(limit = 100): Promise<UserAccount[]> {
   const database = await ensureDatabase();
-  const result = await database.prepare(`SELECT user_id, email, display_name, role, status, credit_balance,
+  const result = await database.prepare(`SELECT user_id, email, phone, display_name, avatar_url,
+    email_verified, phone_verified, role, status, credit_balance,
     total_credits_purchased, created_at, updated_at FROM user_accounts ORDER BY created_at DESC LIMIT ?`)
     .bind(Math.min(limit, 250)).all<Record<string, unknown>>();
   return result.results.map(mapAccount);

@@ -11,7 +11,7 @@ const ALLOWED_TYPES = new Set([
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     return Response.json({ data: await listDocuments(user.id) }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return apiError(error); }
 }
@@ -19,7 +19,7 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request); assertBodySize(request, MAX_FILE_BYTES + 100_000);
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) return Response.json({ error: { message: "Оберіть файл." } }, { status: 422 });

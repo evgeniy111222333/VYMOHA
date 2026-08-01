@@ -10,7 +10,7 @@ const schema = z.object({ source: z.string().min(10).max(300) });
 export async function POST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request); assertBodySize(request, 8_000);
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: { message: "Невірний номер закупівлі." } }, { status: 422 });
     const tender = await fetchTender(parsed.data.source);

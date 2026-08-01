@@ -29,20 +29,19 @@ h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
   display: grid;
   place-items: center;
   padding: 0;
-  overflow: hidden;
-  color: #f5f2e8;
-  background: linear-gradient(145deg, #1d211c, #0d0f0d 72%);
-  border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 11px;
+  overflow: visible;
+  color: currentColor;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
   transform: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 7px 18px rgba(0, 0, 0, .18);
-  transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s ease;
+  box-shadow: none;
+  transition: transform .35s cubic-bezier(.2,.8,.2,1);
 }
-.brand:hover .brand__mark { transform: translateY(-1px) rotate(-2deg); border-color: rgba(157, 242, 31, .52); }
-.brand__mark::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; }
-.brand__mark::after { content: ""; position: absolute; width: 20px; height: 20px; right: -10px; bottom: -10px; background: var(--acid); transform: rotate(45deg); }
-.brand__monogram { position: relative; z-index: 1; padding-top: 1px; background: linear-gradient(108deg, #f5f2e8 0 49%, var(--acid) 50% 100%); background-clip: text; -webkit-background-clip: text; color: transparent; font: 820 24px/.9 var(--font-display), sans-serif; letter-spacing: -.12em; transform: translateX(-1px); }
-.brand__mark > i { position: absolute; z-index: 2; right: 5px; top: 5px; width: 4px; height: 4px; background: var(--acid); border-radius: 1px; box-shadow: 0 0 0 2px rgba(157,242,31,.12); }
+.brand:hover .brand__mark { transform: rotate(16deg); }
+.brand__mark::before { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: conic-gradient(from 18deg, currentColor 0 48deg, transparent 48deg 76deg, currentColor 76deg 152deg, transparent 152deg 194deg, currentColor 194deg 278deg, transparent 278deg 314deg, currentColor 314deg 360deg); -webkit-mask: radial-gradient(circle, transparent 57%, #000 60%); mask: radial-gradient(circle, transparent 57%, #000 60%); }
+.brand__mark::after { content: ""; position: absolute; inset: 16px; border-radius: 50%; background: var(--acid); box-shadow: 0 0 0 4px rgba(157,242,31,.1); }
+.brand__mark > i { position: absolute; z-index: 2; right: 0; top: 20px; width: 9px; height: 2px; background: var(--acid); border-radius: 2px; }
 .brand__word {
   display: inline-flex;
   align-items: center;
@@ -53,7 +52,7 @@ h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
 .brand__word em { color: var(--acid); font-style: normal; }
 .site-footer .brand__mark,
 .dashboard-sidebar .brand__mark,
-.not-found .brand__mark { background: linear-gradient(145deg, #20241f, #0d0f0d 72%); border-color: rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
+.not-found .brand__mark { background: transparent; border: 0; box-shadow: none; }
 .site-footer .brand__word,
 .dashboard-sidebar .brand__word,
 .not-found .brand__word { color: #f7f5ee; }

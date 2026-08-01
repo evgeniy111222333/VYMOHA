@@ -118,7 +118,11 @@ export const userAccounts = sqliteTable(
   {
     userId: text("user_id").primaryKey(),
     email: text("email").notNull(),
+    phone: text("phone"),
     displayName: text("display_name").notNull(),
+    avatarUrl: text("avatar_url"),
+    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+    phoneVerified: integer("phone_verified", { mode: "boolean" }).notNull().default(false),
     role: text("role").notNull().default("user"),
     status: text("status").notNull().default("active"),
     creditBalance: integer("credit_balance").notNull().default(0),
@@ -128,7 +132,44 @@ export const userAccounts = sqliteTable(
   },
   (table) => [
     uniqueIndex("idx_user_accounts_email").on(table.email),
+    uniqueIndex("idx_user_accounts_phone").on(table.phone),
     index("idx_user_accounts_role_status").on(table.role, table.status),
+  ],
+);
+
+export const authIdentities = sqliteTable(
+  "auth_identities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    provider: text("provider").notNull(),
+    providerSubject: text("provider_subject").notNull(),
+    secretHash: text("secret_hash"),
+    secretSalt: text("secret_salt"),
+    verifiedAt: text("verified_at"),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_auth_identities_provider_subject").on(table.provider, table.providerSubject),
+    index("idx_auth_identities_user_id").on(table.userId),
+  ],
+);
+
+export const authSessions = sqliteTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    lastSeenAt: text("last_seen_at").notNull(),
+    userAgentHash: text("user_agent_hash"),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [
+    index("idx_auth_sessions_user_expires").on(table.userId, table.expiresAt),
+    index("idx_auth_sessions_expires_at").on(table.expiresAt),
   ],
 );
 

@@ -5,7 +5,7 @@ import { assertSameOrigin } from "@/src/lib/security";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     const id = (await params).id;
     const document = await getDocument(user.id, id);
     if (!document) return Response.json({ error: { message: "Документ не знайдено." } }, { status: 404 });
@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     assertSameOrigin(request);
-    const user = requireRequestUser(request);
+    const user = await requireRequestUser(request);
     const id = (await params).id;
     const removed = await deleteDocument(user.id, id);
     if (!removed) return Response.json({ error: { message: "Документ не знайдено." } }, { status: 404 });

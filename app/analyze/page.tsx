@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { chatGPTSignInPath, getChatGPTUser } from "@/app/chatgpt-auth";
+import { signInPath as chatGPTSignInPath, getAuthUser as getChatGPTUser } from "@/app/auth";
 import { AnalyzerForm } from "@/components/analyzer/AnalyzerForm";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
