@@ -13,7 +13,7 @@ export function SiteHeader() {
           <Link href="/guides">База знань</Link>
         </nav>
         <div className="site-header__actions">
-          <Link href="/dashboard" className="text-link">Кабінет</Link>
+          <Link href="/dashboard" className="text-link" prefetch={false}>Кабінет</Link>
           <Link href="/#analyze" className="button button--small button--dark">Перевірити тендер <ArrowUpRight size={15} /></Link>
         </div>
       </div>
