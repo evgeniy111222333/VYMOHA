@@ -9,7 +9,7 @@ export function SiteHeader() {
         <Logo />
         <nav className="site-nav" aria-label="Основна навігація">
           <Link href="/#product">Як працює</Link>
-          <Link href="/#pricing">AI-кредити</Link>
+          <Link href="/#pricing">Тарифи</Link>
           <Link href="/guides">База знань</Link>
         </nav>
         <div className="site-header__actions">

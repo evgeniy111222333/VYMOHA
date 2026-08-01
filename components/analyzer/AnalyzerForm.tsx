@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, BrainCircuit, Coins, Gauge, LoaderCircle, LockKeyhole, ScanSearch, Sparkles } from "lucide-react";
+import { ArrowRight, BrainCircuit, Coins, FileCheck2, Gauge, LoaderCircle, LockKeyhole, ScanSearch } from "lucide-react";
 import { ANALYSIS_TIERS, type AnalysisTier } from "@/src/domain/billing/packages";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { AnalysisResult } from "./AnalysisResult";
@@ -48,6 +48,12 @@ export function AnalyzerForm({
     } finally { setLoading(false); }
   }
 
+  const tierDescription = tier === "expert"
+    ? "Максимальна глибина · до 8 документів"
+    : tier === "deep"
+      ? "Документи й таблиці · до 5 файлів"
+      : "Ключові дані закупівлі · швидкий відбір";
+
   return (
     <div className={`analyzer ${variant === "embedded" ? "analyzer--embedded" : "analyzer--page"}`}>
       {allowDeepAnalysis && <div className="analysis-tier-grid" role="radiogroup" aria-label="Глибина аналізу">
@@ -59,8 +65,8 @@ export function AnalyzerForm({
         })}
       </div>}
       {allowDeepAnalysis && <div className="analyzer-account-line">
-        {signedIn ? <span><Coins size={14} /> Баланс <b>{balance} cr</b></span> : <span><LockKeyhole size={14} /> AI-рівні відкриваються після входу</span>}
-        <span><Sparkles size={14} /> {tier === "expert" ? "GPT-5.6 Sol · high reasoning" : tier === "deep" ? "GPT-5.6 Terra · PDF" : "Prozorro structured data"}</span>
+        {signedIn ? <span><Coins size={14} /> Баланс <b>{balance} cr</b></span> : <span><LockKeyhole size={14} /> Поглиблені рівні відкриваються після входу</span>}
+        <span><FileCheck2 size={14} /> {tierDescription}</span>
       </div>}
       <form onSubmit={submit} className="analyzer__form">
         <label htmlFor={`tender-source-${variant}`}>Номер або посилання на закупівлю</label>
@@ -72,12 +78,12 @@ export function AnalyzerForm({
             aria-describedby={`tender-hint-${variant}`}
           />
           <button className="button button--primary" type="submit" disabled={loading}>
-            {loading ? <><LoaderCircle className="spin" size={17} /> {tier === "quick" ? "Збираємо дані" : "AI читає файли"}</> : <>Запустити {tier === "quick" ? "перевірку" : "аналіз"} <ArrowRight size={17} /></>}
+            {loading ? <><LoaderCircle className="spin" size={17} /> {tier === "quick" ? "Збираємо дані" : "Читаємо документацію"}</> : <>Запустити {tier === "quick" ? "перевірку" : "аналіз"} <ArrowRight size={17} /></>}
           </button>
         </div>
         <div className="analyzer__below" id={`tender-hint-${variant}`}>
-          <span><LockKeyhole size={14} /> Секретні ключі та списання виконуються тільки на сервері</span>
-          {tier !== "quick" && <span><Coins size={14} /> Списання: {ANALYSIS_TIERS[tier].credits} cr; автоматичне повернення при помилці</span>}
+          <span><FileCheck2 size={14} /> Результат містить джерела, рівень упевненості та наступні дії</span>
+          {tier !== "quick" && <span><Coins size={14} /> Для цього рівня потрібно {ANALYSIS_TIERS[tier].credits} cr</span>}
         </div>
         {error && <div className="form-error" role="alert">{error}</div>}
       </form>

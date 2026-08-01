@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, MessageSquareText, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, MessageSquareText, ShieldAlert } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
@@ -28,7 +28,7 @@ export function AnalysisResult({ analysis }: { analysis: TenderAnalysis }) {
       <div className="analysis-summary">
         <div className={`analysis-score analysis-score--${analysis.verdict}`}><strong>{analysis.score}</strong><span>/100</span></div>
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
-        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Точність</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><Sparkles size={12} /> AI + PDF</> : "Структурований"}</b></span>{analysis.creditsCharged ? <span><small>Списано</small><b><Coins size={12} /> {analysis.creditsCharged} cr</b></span> : null}</div>
+        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Точність</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Структурований"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {analysis.creditsCharged} cr</b></span> : null}</div>
       </div>
 
       <div className="analysis-layout">

@@ -39,7 +39,7 @@ export async function POST(request: Request): Promise<Response> {
 
     if (requestedTier !== "quick" && user) {
       const env = runtimeEnv();
-      if (!env.OPENAI_API_KEY) throw new HttpError(503, "AI-аналіз ще не підключено: адміністратор має додати OpenAI API key.");
+      if (!env.OPENAI_API_KEY) throw new HttpError(503, "Поглиблений аналіз тимчасово недоступний. Спробуйте швидку перевірку.");
       const model = requestedTier === "expert"
         ? env.OPENAI_MODEL_EXPERT ?? "gpt-5.6-sol"
         : env.OPENAI_MODEL_STANDARD ?? "gpt-5.6-terra";
@@ -54,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
         await completeAnalysisUsage({ analysisId: analysis.id, ...enhanced.usage });
       } catch (error) {
         await refundAnalysisCredits(user.id, analysis.id, error instanceof Error ? error.name : "unknown");
-        if (error instanceof OpenAIAnalysisError) throw new HttpError(502, "AI не завершив звіт. Кредити повернено на баланс.");
+        if (error instanceof OpenAIAnalysisError) throw new HttpError(502, "Не вдалося завершити звіт. Баланс не змінився — спробуйте ще раз.");
         throw error;
       }
     }
