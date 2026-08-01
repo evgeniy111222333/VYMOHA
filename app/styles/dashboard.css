@@ -18,7 +18,7 @@
 }
 
 .dashboard-sidebar .brand { color: #fff; }
-.dashboard-sidebar .brand__mark { background: var(--acid); }
+.dashboard-sidebar .brand__mark { background: linear-gradient(145deg, #20241f, #0d0f0d 72%); }
 
 .dashboard-sidebar__top {
   display: flex;

@@ -21,31 +21,39 @@ body {
 
 h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
 
-.brand { gap: 12px; font-size: initial; letter-spacing: normal; }
+.brand { gap: 13px; font-size: initial; letter-spacing: normal; }
 .brand__mark {
   width: 42px;
   height: 42px;
-  display: block;
+  position: relative;
+  display: grid;
+  place-items: center;
   padding: 0;
   overflow: hidden;
-  background: transparent;
-  border-radius: 0;
+  color: #f5f2e8;
+  background: linear-gradient(145deg, #1d211c, #0d0f0d 72%);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 11px;
   transform: none;
-  filter: drop-shadow(0 5px 8px rgba(16, 18, 15, .12));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 7px 18px rgba(0, 0, 0, .18);
+  transition: transform .25s cubic-bezier(.2,.8,.2,1), border-color .25s ease;
 }
-.brand__mark img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.brand:hover .brand__mark { transform: translateY(-1px) rotate(-2deg); border-color: rgba(157, 242, 31, .52); }
+.brand__mark::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; }
+.brand__mark::after { content: ""; position: absolute; width: 20px; height: 20px; right: -10px; bottom: -10px; background: var(--acid); transform: rotate(45deg); }
+.brand__monogram { position: relative; z-index: 1; padding-top: 1px; background: linear-gradient(108deg, #f5f2e8 0 49%, var(--acid) 50% 100%); background-clip: text; -webkit-background-clip: text; color: transparent; font: 820 24px/.9 var(--font-display), sans-serif; letter-spacing: -.12em; transform: translateX(-1px); }
+.brand__mark > i { position: absolute; z-index: 2; right: 5px; top: 5px; width: 4px; height: 4px; background: var(--acid); border-radius: 1px; box-shadow: 0 0 0 2px rgba(157,242,31,.12); }
 .brand__word {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   color: var(--ink);
-  font: 720 19px/1 var(--font-display), sans-serif;
-  letter-spacing: -.075em;
-  text-transform: lowercase;
+  font: 790 17px/1 var(--font-display), sans-serif;
+  letter-spacing: -.055em;
 }
-.brand__word i { margin-left: 2px; color: var(--acid); font-style: normal; }
+.brand__word em { color: var(--acid); font-style: normal; }
 .site-footer .brand__mark,
 .dashboard-sidebar .brand__mark,
-.not-found .brand__mark { padding: 3px; background: #f7f5ee; border-radius: 5px; filter: none; }
+.not-found .brand__mark { background: linear-gradient(145deg, #20241f, #0d0f0d 72%); border-color: rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
 .site-footer .brand__word,
 .dashboard-sidebar .brand__word,
 .not-found .brand__word { color: #f7f5ee; }
