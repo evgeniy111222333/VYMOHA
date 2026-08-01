@@ -7,9 +7,9 @@ export function SiteFooter() {
       <div className="container site-footer__grid">
         <div>
           <Logo />
-          <p>Рішення по тендеру — з доказами, а не з інтуїцією.</p>
+          <p>Тендерна розвідка з доказами, контрольованими витратами та чесною невизначеністю.</p>
         </div>
-        <div><strong>Продукт</strong><Link href="/analyze">Аналізатор</Link><Link href="/dashboard" prefetch={false}>Кабінет</Link><Link href="/#pricing">Тарифи</Link></div>
+        <div><strong>Продукт</strong><Link href="/analyze">Аналізатор</Link><Link href="/dashboard" prefetch={false}>Кабінет</Link><Link href="/dashboard/billing" prefetch={false}>AI-кредити</Link></div>
         <div><strong>Матеріали</strong><Link href="/guides">База знань</Link><Link href="/guides/dokumenty-dlia-uchasti">Документи для участі</Link><Link href="/guides/prychyny-vidkhylennia">Причини відхилення</Link></div>
         <div><strong>Правова інформація</strong><Link href="/privacy">Конфіденційність</Link><Link href="/terms">Умови використання</Link><a href="mailto:hello@vymoha.app">hello@vymoha.app</a></div>
       </div>

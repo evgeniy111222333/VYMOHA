@@ -1,30 +1,19 @@
-import { ArrowUpRight, FileWarning, ScanSearch, TimerReset } from "lucide-react";
-
-const steps = [
-  { n: "01", title: "Забирає дані з Prozorro", text: "Реквізити, дедлайн, файли, критерії, забезпечення та всі актуальні редакції.", icon: ScanSearch },
-  { n: "02", title: "Розкладає вимоги", text: "Формальні, технічні, фінансові та досвідні умови стають перевірним списком.", icon: FileWarning },
-  { n: "03", title: "Дає рішення", text: "Go / Maybe / No-go, пріоритетні ризики й наступні дії — без юридичного туману.", icon: TimerReset },
-];
+import { ArrowUpRight, Bot, Braces, CheckCircle2, FileText, MessageSquareText, ScanLine, ShieldAlert } from "lucide-react";
 
 export function ProductProof() {
-  return (
-    <section className="product-proof" id="product" data-reveal>
-      <div className="container">
-        <div className="section-heading"><div><span className="section-kicker">Як працює</span><h2>Від посилання до рішення<br />за один робочий екран.</h2></div><p>Ми не приховуємо висновок за «магічним AI». Кожен ризик має джерело, статус і наступну дію.</p></div>
-        <div className="step-grid">
-          {steps.map((step) => <article key={step.n} className="step-card" data-reveal><div className="step-card__top"><span>{step.n}</span><step.icon size={22} /></div><h3>{step.title}</h3><p>{step.text}</p><a href="/analyze">Спробувати <ArrowUpRight size={15} /></a></article>)}
-        </div>
-        <div className="proof-panel" data-reveal>
-          <div className="proof-panel__rail"><span>ВИСНОВОК</span><b>Потрібна дія</b><span>Доказ</span><span>Власник</span></div>
-          <div className="proof-panel__body">
-            <div className="proof-panel__headline"><span className="risk-badge risk-badge--high">Високий ризик</span><span className="mono">R-04</span></div>
-            <h3>Вимога про аналогічний договір вужча за профіль компанії</h3>
-            <p>Замовник вимагає підтвердження поставки саме поліетиленових труб протягом останніх 24 місяців. Загальний договір на сантехнічні матеріали може бути недостатнім.</p>
-            <blockquote>«…не менше одного виконаного договору на поставку труб ПЕ 100…» <a href="#">Додаток 2, стор. 6 ↗</a></blockquote>
-            <div className="proof-panel__action"><span>Наступний крок</span><b>Завантажити релевантний акт виконання або надіслати уточнення замовнику до 05 серпня.</b></div>
-          </div>
-        </div>
+  return <section className="product-proof product-proof-v3" id="product">
+    <div className="container">
+      <div className="editorial-heading" data-reveal><span className="section-index">01 / INTELLIGENCE</span><h2>Не ще один чат.<br /><em>Система прийняття рішень.</em></h2><p>Структуровані дані дають швидкий фільтр. OpenAI читає PDF, бачить таблиці й зіставляє кожен висновок із джерелом.</p></div>
+      <div className="intelligence-bento">
+        <article className="bento-card bento-card--workspace" data-reveal>
+          <header><span><ScanLine size={17} /> Document intelligence</span><code>2 / 2 files processed</code></header>
+          <div className="document-stage"><aside><span className="is-active">ТД.pdf</span><span>Додаток 2.pdf</span><i /></aside><div><div className="document-highlight"><small>ДОДАТОК 2 · СТОРІНКА 6</small><p>Учасник підтверджує виконання не менше одного аналогічного договору на постачання кабелю…</p><span>Виявлено вимогу</span></div><div className="extraction-row"><span><FileText size={15} /> Досвід</span><b>Аналогічний договір</b><em>перевірити</em></div><div className="extraction-row"><span><ShieldAlert size={15} /> Ризик</span><b>Вузьке визначення предмета</b><em>high</em></div></div></div>
+        </article>
+        <article className="bento-card bento-card--decision" data-reveal><span className="bento-icon"><Bot size={22} /></span><small>DECISION ENGINE</small><h3>Go / maybe / no-go — лише після доказів.</h3><p>Без профілю компанії система не видає оптимістичне «можна заходити».</p><div className="decision-spectrum"><i /><span>NO-GO</span><span>MAYBE</span><span>GO</span></div></article>
+        <article className="bento-card bento-card--schema" data-reveal><span className="bento-icon"><Braces size={22} /></span><small>STRUCTURED OUTPUT</small><h3>Результат завжди у стабільній схемі.</h3><div className="schema-code"><span>requirements <b>32</b></span><span>risks <b>12</b></span><span>questions <b>6</b></span><span>sources <b>100%</b></span></div></article>
+        <article className="bento-card bento-card--questions" data-reveal><header><MessageSquareText size={18} /><span>Питання замовнику</span></header><ol><li>Чи приймається договір на суміжний CPV?</li><li>Який формат підтвердження походження?</li><li>Чи потрібна гарантія на кожен лот?</li></ol><a href="/analyze">Сформувати для тендера <ArrowUpRight size={15} /></a></article>
+        <article className="bento-card bento-card--refund" data-reveal><CheckCircle2 size={22} /><div><small>FAIR BILLING</small><h3>AI не відповів — кредити повертаються автоматично.</h3></div></article>
       </div>
-    </section>
-  );
+    </div>
+  </section>;
 }

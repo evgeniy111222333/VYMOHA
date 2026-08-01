@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Manrope, Unbounded } from "next/font/google";
+import { IBM_Plex_Mono, Manrope, Onest } from "next/font/google";
 import { MotionEffects } from "@/components/site/MotionEffects";
 import "./globals.css";
 
 const bodyFont = Manrope({ variable: "--font-body", subsets: ["latin", "cyrillic"], display: "swap" });
-const displayFont = Unbounded({ variable: "--font-display", subsets: ["latin", "cyrillic"], display: "swap" });
+const displayFont = Onest({ variable: "--font-display", subsets: ["latin", "cyrillic"], display: "swap" });
 const monoFont = IBM_Plex_Mono({ variable: "--font-mono", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"], display: "swap" });
 
 export const metadata: Metadata = {
@@ -18,14 +18,14 @@ export const metadata: Metadata = {
     type: "website", locale: "uk_UA", siteName: "Вимога",
     title: "Вимога — тендер вартий вашого часу?",
     description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
-    images: [{ url: "/og-vymoha.jpg", width: 1200, height: 630, alt: "Вимога — рішення по тендеру з доказами" }],
+    images: [{ url: "/og-vymoha-v2.png", width: 1730, height: 909, alt: "Вимога — AI tender intelligence" }],
   },
-  twitter: { card: "summary_large_image", title: "Вимога", description: "Рішення по тендеру за хвилини, не години.", images: ["/og-vymoha.jpg"] },
+  twitter: { card: "summary_large_image", title: "Вимога", description: "Рішення по тендеру за хвилини, не години.", images: ["/og-vymoha-v2.png"] },
   manifest: "/manifest.webmanifest",
   icons: { icon: "/favicon-v2.png", shortcut: "/favicon-v2.png", apple: "/apple-touch-icon.png" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f3f0e7", colorScheme: "light" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0a0b0a", colorScheme: "dark light" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

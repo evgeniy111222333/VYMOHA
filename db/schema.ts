@@ -112,3 +112,85 @@ export const auditEvents = sqliteTable(
     index("idx_audit_events_resource").on(table.resourceType, table.resourceId),
   ],
 );
+
+export const userAccounts = sqliteTable(
+  "user_accounts",
+  {
+    userId: text("user_id").primaryKey(),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull(),
+    role: text("role").notNull().default("user"),
+    status: text("status").notNull().default("active"),
+    creditBalance: integer("credit_balance").notNull().default(0),
+    totalCreditsPurchased: integer("total_credits_purchased").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_user_accounts_email").on(table.email),
+    index("idx_user_accounts_role_status").on(table.role, table.status),
+  ],
+);
+
+export const paymentOrders = sqliteTable(
+  "payment_orders",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    packageId: text("package_id").notNull(),
+    credits: integer("credits").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency").notNull(),
+    status: text("status").notNull().default("pending"),
+    provider: text("provider").notNull().default("stripe"),
+    providerSessionId: text("provider_session_id"),
+    providerPaymentId: text("provider_payment_id"),
+    createdAt: text("created_at").notNull(),
+    paidAt: text("paid_at"),
+  },
+  (table) => [
+    index("idx_payment_orders_user_created").on(table.userId, table.createdAt),
+    uniqueIndex("idx_payment_orders_provider_session").on(table.providerSessionId),
+  ],
+);
+
+export const creditLedger = sqliteTable(
+  "credit_ledger",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    delta: integer("delta").notNull(),
+    balanceAfter: integer("balance_after").notNull(),
+    reason: text("reason").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    metadataJson: text("metadata_json").notNull().default("{}"),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_credit_ledger_user_created").on(table.userId, table.createdAt),
+    uniqueIndex("idx_credit_ledger_idempotency").on(table.idempotencyKey),
+  ],
+);
+
+export const aiUsage = sqliteTable(
+  "ai_usage",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    analysisId: text("analysis_id").notNull(),
+    tier: text("tier").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costMicrousd: integer("cost_microusd").notNull().default(0),
+    creditsCharged: integer("credits_charged").notNull(),
+    status: text("status").notNull().default("reserved"),
+    createdAt: text("created_at").notNull(),
+    completedAt: text("completed_at"),
+  },
+  (table) => [
+    uniqueIndex("idx_ai_usage_analysis_id").on(table.analysisId),
+    index("idx_ai_usage_user_created").on(table.userId, table.createdAt),
+  ],
+);

@@ -14,9 +14,9 @@ export default function HomePage() {
       <Hero />
       <section className="analyzer-strip" id="analyze" data-reveal>
         <div className="container analyzer-strip__inner">
-          <div className="section-kicker">Безплатна перевірка</div>
-          <h2>Вставте номер закупівлі. Решту розкладемо по полицях.</h2>
-          <p className="section-lead">Працює з активними закупівлями Prozorro. Базовий звіт не потребує реєстрації.</p>
+          <div className="section-index">00 / TRY IT NOW</div>
+          <h2>Почніть із тендера,<br /><em>а не з реєстрації.</em></h2>
+          <p className="section-lead">Вставте ID активної закупівлі Prozorro. За кілька секунд отримаєте безплатний структурований фільтр без входу.</p>
           <AnalyzerForm variant="embedded" />
         </div>
       </section>

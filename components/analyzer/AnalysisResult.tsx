@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, BellPlus, Check, ChevronDown, ExternalLink, FileText, ShieldAlert } from "lucide-react";
+import { AlertTriangle, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, MessageSquareText, ShieldAlert, Sparkles } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
@@ -28,7 +28,7 @@ export function AnalysisResult({ analysis }: { analysis: TenderAnalysis }) {
       <div className="analysis-summary">
         <div className={`analysis-score analysis-score--${analysis.verdict}`}><strong>{analysis.score}</strong><span>/100</span></div>
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
-        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Точність</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? "AI + дані" : "Структурований"}</b></span></div>
+        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Точність</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><Sparkles size={12} /> AI + PDF</> : "Структурований"}</b></span>{analysis.creditsCharged ? <span><small>Списано</small><b><Coins size={12} /> {analysis.creditsCharged} cr</b></span> : null}</div>
       </div>
 
       <div className="analysis-layout">
@@ -51,6 +51,10 @@ export function AnalysisResult({ analysis }: { analysis: TenderAnalysis }) {
           <button className="button button--dark button--full" onClick={enableWatch} disabled={watching}>{watching ? <><Check size={16} /> Моніторинг увімкнено</> : <><BellPlus size={16} /> Стежити за змінами</>}</button>
         </aside>
       </div>
+      {analysis.mode === "ai-enhanced" && ((analysis.questionsToBuyer?.length ?? 0) > 0 || (analysis.documentCoverage?.length ?? 0) > 0) && <div className="ai-intelligence-grid">
+        <section className="analysis-panel"><div className="analysis-panel__title"><div><FileCheck2 size={18} /><h3>Покриття документів</h3></div><span>{analysis.documentCoverage?.length ?? 0}</span></div><div className="coverage-list">{analysis.documentCoverage?.map((item) => <div key={`${item.title}:${item.status}`}><span className={`coverage-dot coverage-dot--${item.status}`} /><span><b>{item.title}</b><small>{item.notes}</small></span><i>{item.status === "read" ? "прочитано" : item.status === "partial" ? "частково" : "недоступно"}</i></div>)}</div></section>
+        <section className="analysis-panel"><div className="analysis-panel__title"><div><MessageSquareText size={18} /><h3>Питання замовнику</h3></div></div><ol className="buyer-questions">{analysis.questionsToBuyer?.map((question) => <li key={question}>{question}</li>)}</ol></section>
+      </div>}
       <p className="analysis-disclaimer">{analysis.disclaimer}</p>
     </section>
   );

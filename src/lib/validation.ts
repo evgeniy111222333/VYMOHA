@@ -3,6 +3,7 @@ import { z } from "zod";
 export const analyzeRequestSchema = z.object({
   source: z.string().trim().min(10).max(300),
   deepAnalysis: z.boolean().optional().default(false),
+  analysisTier: z.enum(["quick", "deep", "expert"]).optional(),
   company: z.object({
     name: z.string().trim().max(160).optional(),
     edrpou: z.string().regex(/^\d{8,10}$/).optional(),

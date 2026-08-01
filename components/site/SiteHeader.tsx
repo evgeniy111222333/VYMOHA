@@ -8,13 +8,13 @@ export function SiteHeader() {
       <div className="container site-header__inner">
         <Logo />
         <nav className="site-nav" aria-label="Основна навігація">
-          <Link href="/#product">Продукт</Link>
-          <Link href="/#pricing">Тарифи</Link>
+          <Link href="/#product">Як працює</Link>
+          <Link href="/#pricing">AI-кредити</Link>
           <Link href="/guides">База знань</Link>
         </nav>
         <div className="site-header__actions">
-          <Link href="/dashboard" className="text-link" prefetch={false}>Кабінет</Link>
-          <Link href="/#analyze" className="button button--small button--dark">Перевірити тендер <ArrowUpRight size={15} /></Link>
+          <Link href="/dashboard" className="text-link" prefetch={false}>Увійти</Link>
+          <Link href="/#analyze" className="button button--small button--dark">Аналізувати <ArrowUpRight size={15} /></Link>
         </div>
       </div>
     </header>

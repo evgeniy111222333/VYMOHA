@@ -73,8 +73,12 @@ export type TenderAnalysis = {
   summary: string;
   generatedAt: string;
   mode: "structured" | "ai-enhanced";
+  analysisTier?: "quick" | "deep" | "expert";
   requirements: TenderRequirement[];
   risks: TenderRisk[];
   nextActions: string[];
+  questionsToBuyer?: string[];
+  documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
+  creditsCharged?: number;
   disclaimer: string;
 };

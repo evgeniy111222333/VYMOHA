@@ -4,7 +4,13 @@ export type RuntimeEnv = {
   DB: D1Database;
   DOCUMENTS: R2Bucket;
   OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
+  OPENAI_MODEL_STANDARD?: string;
+  OPENAI_MODEL_EXPERT?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  APP_BASE_URL?: string;
+  ADMIN_EMAILS?: string;
+  ADMIN_STARTING_CREDITS?: string;
 };
 
 let initialization: Promise<void> | null = null;
@@ -55,6 +61,30 @@ async function initialize(database: D1Database): Promise<void> {
       id TEXT PRIMARY KEY, user_id TEXT, action TEXT NOT NULL, resource_type TEXT NOT NULL,
       resource_id TEXT, ip_hash TEXT, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS user_accounts (
+      user_id TEXT PRIMARY KEY, email TEXT NOT NULL, display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user', status TEXT NOT NULL DEFAULT 'active',
+      credit_balance INTEGER NOT NULL DEFAULT 0, total_credits_purchased INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS payment_orders (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, package_id TEXT NOT NULL, credits INTEGER NOT NULL,
+      amount_minor INTEGER NOT NULL, currency TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+      provider TEXT NOT NULL DEFAULT 'stripe', provider_session_id TEXT, provider_payment_id TEXT,
+      created_at TEXT NOT NULL, paid_at TEXT
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS credit_ledger (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, delta INTEGER NOT NULL, balance_after INTEGER NOT NULL,
+      reason TEXT NOT NULL, idempotency_key TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS ai_usage (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, analysis_id TEXT NOT NULL, tier TEXT NOT NULL,
+      model TEXT NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0, cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0, cost_microusd INTEGER NOT NULL DEFAULT 0,
+      credits_charged INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'reserved',
+      created_at TEXT NOT NULL, completed_at TEXT
+    )`),
   ]);
   await database.batch([
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_owner_user_id ON organizations(owner_user_id)"),
@@ -69,6 +99,14 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_at ON rate_limits(reset_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_user_created ON audit_events(user_id, created_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_resource ON audit_events(resource_type, resource_id)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_user_accounts_role_status ON user_accounts(role, status)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_payment_orders_user_created ON payment_orders(user_id, created_at)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_orders_provider_session ON payment_orders(provider_session_id)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_credit_ledger_user_created ON credit_ledger(user_id, created_at)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_ledger_idempotency ON credit_ledger(idempotency_key)"),
+    database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_usage_analysis_id ON ai_usage(analysis_id)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage(user_id, created_at)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
 }

@@ -40,8 +40,8 @@ test("server-renders the production marketing page", async () => {
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="uk"/i);
   assert.match(html, /Вимога/);
-  assert.match(html, /Аналіз закупівель Prozorro/);
-  assert.match(html, /Перевірити тендер/);
+  assert.match(html, /300 сторінок/);
+  assert.match(html, /Запустити аналіз/);
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton|codex-preview/i);
 });
 
