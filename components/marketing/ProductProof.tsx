@@ -8,13 +8,13 @@ const steps = [
 
 export function ProductProof() {
   return (
-    <section className="product-proof" id="product">
+    <section className="product-proof" id="product" data-reveal>
       <div className="container">
         <div className="section-heading"><div><span className="section-kicker">Як працює</span><h2>Від посилання до рішення<br />за один робочий екран.</h2></div><p>Ми не приховуємо висновок за «магічним AI». Кожен ризик має джерело, статус і наступну дію.</p></div>
         <div className="step-grid">
-          {steps.map((step) => <article key={step.n} className="step-card"><div className="step-card__top"><span>{step.n}</span><step.icon size={22} /></div><h3>{step.title}</h3><p>{step.text}</p><a href="/analyze">Спробувати <ArrowUpRight size={15} /></a></article>)}
+          {steps.map((step) => <article key={step.n} className="step-card" data-reveal><div className="step-card__top"><span>{step.n}</span><step.icon size={22} /></div><h3>{step.title}</h3><p>{step.text}</p><a href="/analyze">Спробувати <ArrowUpRight size={15} /></a></article>)}
         </div>
-        <div className="proof-panel">
+        <div className="proof-panel" data-reveal>
           <div className="proof-panel__rail"><span>ВИСНОВОК</span><b>Потрібна дія</b><span>Доказ</span><span>Власник</span></div>
           <div className="proof-panel__body">
             <div className="proof-panel__headline"><span className="risk-badge risk-badge--high">Високий ризик</span><span className="mono">R-04</span></div>

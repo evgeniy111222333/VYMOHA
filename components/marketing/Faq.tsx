@@ -6,5 +6,5 @@ const items = [
 ];
 
 export function Faq() {
-  return <section className="faq"><div className="container faq__grid"><div><span className="section-kicker">Часті питання</span><h2>Без дрібного шрифту.</h2><p>Якщо відповідь впливає на рішення про участь — вона має бути зрозумілою до оплати.</p></div><div>{items.map(([question, answer]) => <details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div></div></section>;
+  return <section className="faq" data-reveal><div className="container faq__grid"><div><span className="section-kicker">Часті питання</span><h2>Без дрібного шрифту.</h2><p>Якщо відповідь впливає на рішення про участь — вона має бути зрозумілою до оплати.</p></div><div>{items.map(([question, answer]) => <details key={question}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div></div></section>;
 }

@@ -25,6 +25,13 @@ describe("tender scoring", () => {
     expect(result.score).toBeLessThan(45);
   });
 
+  it("never recommends an anonymous structured check as ready to bid", () => {
+    const result = scoreTender(tenderFixture(), undefined, now);
+    expect(result.score).toBeLessThanOrEqual(69);
+    expect(result.verdict).toBe("maybe");
+    expect(result.confidence).toBeLessThanOrEqual(78);
+  });
+
   it("builds traceable requirements and actionable risks", () => {
     const result = analyzeTender(tenderFixture({
       deadline: "2026-08-03T00:00:00+03:00",
@@ -32,6 +39,7 @@ describe("tender scoring", () => {
     }), undefined, now);
     expect(result.requirements.some((item) => item.id === "guarantee")).toBe(true);
     expect(result.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["short-deadline", "guarantee-risk"]));
+    expect(result.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["profile-unknown", "document-review"]));
     expect(result.nextActions.length).toBeGreaterThan(1);
     expect(result.requirements.every((item) => item.evidence.source.startsWith("https://"))).toBe(true);
   });

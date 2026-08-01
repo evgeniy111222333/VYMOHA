@@ -12,7 +12,7 @@ export default function HomePage() {
     <main>
       <SiteHeader />
       <Hero />
-      <section className="analyzer-strip" id="analyze">
+      <section className="analyzer-strip" id="analyze" data-reveal>
         <div className="container analyzer-strip__inner">
           <div className="section-kicker">Безплатна перевірка</div>
           <h2>Вставте номер закупівлі. Решту розкладемо по полицях.</h2>

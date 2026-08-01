@@ -11,10 +11,10 @@ const features = [
 
 export function FeatureGrid() {
   return (
-    <section className="feature-section">
+    <section className="feature-section" data-reveal>
       <div className="container">
         <div className="section-heading section-heading--compact"><div><span className="section-kicker">Робочий процес</span><h2>Не чат. Система перевірок.</h2></div></div>
-        <div className="feature-grid">{features.map((feature) => <article key={feature.title}><feature.icon size={22} /><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
+        <div className="feature-grid">{features.map((feature) => <article key={feature.title} data-reveal><feature.icon size={22} /><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
       </div>
     </section>
   );

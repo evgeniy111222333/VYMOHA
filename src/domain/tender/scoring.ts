@@ -14,6 +14,11 @@ const ACTIVE_STATUSES = new Set([
 export function scoreTender(tender: NormalizedTender, company?: CompanyProfile, now = new Date()): ScoreBreakdown {
   let score = 54;
   let confidence = 58;
+  const companyCpvMatch = Boolean(
+    company?.cpvCodes.length
+    && tender.cpvCode
+    && company.cpvCodes.some((code) => tender.cpvCode?.startsWith(code.slice(0, 5))),
+  );
   if (ACTIVE_STATUSES.has(tender.status)) score += 14;
   else score -= 38;
 
@@ -33,12 +38,17 @@ export function scoreTender(tender: NormalizedTender, company?: CompanyProfile, 
 
   if (company) {
     confidence += 10;
-    if (tender.cpvCode && company.cpvCodes.some((code) => tender.cpvCode?.startsWith(code.slice(0, 5)))) score += 16;
+    if (companyCpvMatch) score += 16;
     if (company.edrpou) confidence += 3;
     score += Math.min(company.certifications.length * 2, 8);
   }
 
-  const boundedScore = Math.max(0, Math.min(100, Math.round(score)));
-  const verdict: Verdict = boundedScore >= 75 ? "go" : boundedScore >= 45 ? "maybe" : "no-go";
-  return { score: boundedScore, confidence: Math.max(35, Math.min(96, Math.round(confidence))), verdict };
+  // A generic active tender is not a "go" until it is matched against the supplier.
+  // The cap keeps anonymous structured checks useful without creating false confidence.
+  const profileAwareScore = companyCpvMatch ? score : Math.min(score, 69);
+  const boundedScore = Math.max(0, Math.min(100, Math.round(profileAwareScore)));
+  const canRecommend = companyCpvMatch && tender.documents.length > 0;
+  const verdict: Verdict = canRecommend && boundedScore >= 75 ? "go" : boundedScore >= 45 ? "maybe" : "no-go";
+  const confidenceCap = company ? 90 : 78;
+  return { score: boundedScore, confidence: Math.max(35, Math.min(confidenceCap, Math.round(confidence))), verdict };
 }

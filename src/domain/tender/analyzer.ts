@@ -6,7 +6,7 @@ const formatter = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 2 });
 export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile, now = new Date()): TenderAnalysis {
   const score = scoreTender(tender, company, now);
   const requirements = buildRequirements(tender, company, now);
-  const risks = buildRisks(tender, now);
+  const risks = buildRisks(tender, company, now);
   const missingCount = requirements.filter((item) => item.status === "missing").length;
   const reviewCount = requirements.filter((item) => item.status === "review").length;
 
@@ -85,7 +85,7 @@ function buildRequirements(tender: NormalizedTender, company: CompanyProfile | u
   requirements.push({
     id: "documents",
     title: "Тендерна документація",
-    description: `${tenderDocs.length} файлів доступно для перевірки`,
+    description: `${formatFileCount(tenderDocs.length)} доступно для перевірки`,
     category: "document",
     status: tenderDocs.length > 0 ? "review" : "unknown",
     evidence: { label: "Документи закупівлі", source },
@@ -93,7 +93,7 @@ function buildRequirements(tender: NormalizedTender, company: CompanyProfile | u
   return requirements;
 }
 
-function buildRisks(tender: NormalizedTender, now: Date): TenderRisk[] {
+function buildRisks(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date): TenderRisk[] {
   const risks: TenderRisk[] = [];
   const deadline = tender.deadline ? new Date(tender.deadline) : null;
   if (deadline) {
@@ -132,6 +132,25 @@ function buildRisks(tender: NormalizedTender, now: Date): TenderRisk[] {
     });
   }
 
+  if (!company?.cpvCodes.length) {
+    risks.push({
+      id: "profile-unknown", title: "Профіль постачальника не зіставлено",
+      description: "Без ваших CPV-кодів, можливостей і сертифікатів сервіс не може підтвердити відповідність предмету закупівлі.", level: "medium",
+      mitigation: "Додайте профіль компанії та повторіть аналіз перед рішенням про участь.",
+      evidence: { label: "Профіль компанії", source: tender.sourceUrl },
+    });
+  }
+
+  const tenderDocs = tender.documents.filter((document) => document.title !== "sign.p7s");
+  if (tenderDocs.length > 0) {
+    risks.push({
+      id: "document-review", title: "Файли ще потребують прочитання",
+      description: `Базовий режим знайшов ${formatFileCount(tenderDocs.length)}, але не робить висновків із повного тексту PDF та додатків.`, level: "medium",
+      mitigation: "Відкрийте файли вручну або запустіть поглиблений AI-аналіз після входу.",
+      evidence: { label: "Документи закупівлі", source: tender.sourceUrl },
+    });
+  }
+
   if (risks.length === 0) {
     risks.push({
       id: "manual-review", title: "Потрібна перевірка повного тексту",
@@ -141,6 +160,13 @@ function buildRisks(tender: NormalizedTender, now: Date): TenderRisk[] {
     });
   }
   return risks;
+}
+
+function formatFileCount(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  const noun = mod10 === 1 && mod100 !== 11 ? "файл" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "файли" : "файлів";
+  return `${count} ${noun}`;
 }
 
 function buildNextActions(requirements: TenderRequirement[], risks: TenderRisk[]): string[] {
