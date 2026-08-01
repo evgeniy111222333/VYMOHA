@@ -2,6 +2,7 @@ import { runtimeEnv } from "@/db/runtime";
 import { getAnalysisTier, type AnalysisTier } from "@/src/domain/billing/packages";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
 import { enhanceAnalysis, OpenAIAnalysisError } from "@/src/infrastructure/openai/enhancer";
+import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { fetchTender } from "@/src/infrastructure/prozorro/client";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { completeAnalysisUsage, refundAnalysisCredits, reserveAnalysisCredits } from "@/src/infrastructure/storage/billing";
@@ -33,7 +34,8 @@ export async function POST(request: Request): Promise<Response> {
     if (requestedTier !== "quick" && !user) throw new HttpError(401, "Увійдіть, щоб запустити повний AI-аналіз.");
     const company = parsed.data.company ?? (user ? await getCompanyProfile(user.id) : undefined) ?? undefined;
     const tender = await fetchTender(parsed.data.source);
-    let analysis = analyzeTender(tender, company);
+    const buyerContext = tender.buyerEdrpou ? await fetchBuyerContext(tender.buyerEdrpou) : undefined;
+    let analysis = analyzeTender(tender, company, new Date(), buyerContext);
     analysis.analysisTier = "quick";
     let creditBalance = account?.creditBalance;
 

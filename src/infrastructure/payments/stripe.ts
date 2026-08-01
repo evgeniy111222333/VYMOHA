@@ -22,7 +22,7 @@ export async function createStripeCheckout(input: {
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": input.pack.currency,
     "line_items[0][price_data][unit_amount]": String(input.pack.amountMinor),
-    "line_items[0][price_data][product_data][name]": `Вимога — ${input.pack.credits} AI-кредитів`,
+    "line_items[0][price_data][product_data][name]": `Вимога — ${input.pack.credits} сигналів`,
     "line_items[0][price_data][product_data][description]": input.pack.description,
     "metadata[order_id]": input.orderId,
     "metadata[user_id]": input.userId,

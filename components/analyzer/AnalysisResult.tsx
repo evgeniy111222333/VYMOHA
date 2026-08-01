@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { AlertTriangle, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, MessageSquareText, ShieldAlert } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
+import { formatSignals } from "@/src/domain/billing/presentation";
+import { BuyerContextCard } from "./BuyerContextCard";
+import { ScoreExplanation } from "./ScoreExplanation";
+import { TenderDocumentList } from "./TenderDocumentList";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
@@ -28,8 +32,15 @@ export function AnalysisResult({ analysis }: { analysis: TenderAnalysis }) {
       <div className="analysis-summary">
         <div className={`analysis-score analysis-score--${analysis.verdict}`}><strong>{analysis.score}</strong><span>/100</span></div>
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
-        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Точність</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Структурований"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {analysis.creditsCharged} cr</b></span> : null}</div>
+        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Покриття даних</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Поверхневий"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}</div>
       </div>
+
+      <div className="analysis-context-grid">
+        <ScoreExplanation analysis={analysis} />
+        {analysis.buyerContext && <BuyerContextCard context={analysis.buyerContext} />}
+      </div>
+
+      <TenderDocumentList analysis={analysis} />
 
       <div className="analysis-layout">
         <div className="analysis-panel">

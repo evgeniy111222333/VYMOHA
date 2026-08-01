@@ -1,10 +1,10 @@
 import { scoreTender } from "./scoring";
-import type { CompanyProfile, NormalizedTender, TenderAnalysis, TenderRequirement, TenderRisk } from "./types";
+import type { BuyerContext, CompanyProfile, NormalizedTender, TenderAnalysis, TenderRequirement, TenderRisk } from "./types";
 
 const formatter = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 2 });
 
-export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile, now = new Date()): TenderAnalysis {
-  const score = scoreTender(tender, company, now);
+export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile, now = new Date(), buyerContext?: BuyerContext): TenderAnalysis {
+  const score = scoreTender(tender, company, now, buyerContext);
   const requirements = buildRequirements(tender, company, now);
   const risks = buildRisks(tender, company, now);
   const missingCount = requirements.filter((item) => item.status === "missing").length;
@@ -16,11 +16,15 @@ export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile
     verdict: score.verdict,
     score: score.score,
     confidence: score.confidence,
+    scoreFactors: score.factors,
+    buyerContext,
     summary: score.verdict === "go"
       ? `Закупівля виглядає перспективною. Перед поданням підтвердьте ${reviewCount} пунктів, які потребують ручної перевірки.`
       : score.verdict === "maybe"
         ? `Потенціал є, але рішення залежить від ${Math.max(1, missingCount + reviewCount)} відкритих вимог. Не формуйте пропозицію до їх перевірки.`
-        : "Виявлено стоп-фактори або закупівля вже не приймає пропозиції. Спершу усуньте критичні розбіжності.",
+        : isDeadlineClosed(tender, now)
+          ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
+          : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.",
     generatedAt: now.toISOString(),
     mode: "structured",
     requirements,
@@ -28,6 +32,12 @@ export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile
     nextActions: buildNextActions(requirements, risks),
     disclaimer: "Автоматичний аналіз є допоміжним інструментом і не замінює юридичну перевірку або рішення відповідальної особи.",
   };
+}
+
+function isDeadlineClosed(tender: NormalizedTender, now: Date): boolean {
+  if (!tender.deadline) return false;
+  const deadline = new Date(tender.deadline);
+  return Number.isFinite(deadline.getTime()) && deadline.getTime() < now.getTime();
 }
 
 function buildRequirements(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date): TenderRequirement[] {

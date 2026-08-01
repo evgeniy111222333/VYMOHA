@@ -38,7 +38,7 @@ export async function setUserStatus(targetUserId: string, status: AccountStatus)
 }
 
 export async function grantCredits(adminUserId: string, targetUserId: string, credits: number, note: string): Promise<number> {
-  if (!Number.isSafeInteger(credits) || credits < 1 || credits > 100_000) throw new HttpError(422, "Некоректна кількість кредитів.");
+  if (!Number.isSafeInteger(credits) || credits < 1 || credits > 100_000) throw new HttpError(422, "Некоректна кількість сигналів.");
   const database = await ensureDatabase();
   const target = await getUserAccount(targetUserId);
   if (!target) throw new HttpError(404, "Користувача не знайдено.");

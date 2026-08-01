@@ -16,7 +16,7 @@ describe("AI billing", () => {
   it("keeps package ids unique and amounts positive", () => {
     expect(new Set(CREDIT_PACKAGES.map((item) => item.id)).size).toBe(CREDIT_PACKAGES.length);
     expect(CREDIT_PACKAGES.every((item) => item.credits > 0 && item.amountMinor > 0)).toBe(true);
-    expect(getCreditPackage("team")?.credits).toBe(400);
+    expect(getCreditPackage("team")?.credits).toBe(100);
   });
 });
 

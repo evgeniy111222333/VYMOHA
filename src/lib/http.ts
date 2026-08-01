@@ -23,6 +23,7 @@ export class HttpError extends Error {
 }
 
 export function apiError(error: unknown): Response {
+  if (!(error instanceof HttpError) && !(error instanceof SecurityError)) console.error("Unhandled API error", error);
   if (error instanceof HttpError) return Response.json({ error: { message: error.message, details: error.details } }, { status: error.status });
   if (error instanceof SecurityError) return Response.json({ error: { message: error.message } }, { status: 403 });
   const message = error instanceof Error ? error.message : "Неочікувана помилка.";

@@ -20,7 +20,7 @@ export async function reserveAnalysisCredits(input: {
     WHERE user_id = ? AND status = 'active' AND credit_balance >= ?`).bind(
     input.credits, new Date().toISOString(), input.userId, input.credits,
   ).run();
-  if ((result.meta.changes ?? 0) !== 1) throw new HttpError(402, "Недостатньо AI-кредитів. Поповніть баланс і повторіть аналіз.");
+  if ((result.meta.changes ?? 0) !== 1) throw new HttpError(402, "Недостатньо сигналів. Оберіть пакет і повторіть аналіз.");
   const balance = await getCreditBalance(input.userId);
   const now = new Date().toISOString();
   try {
@@ -77,7 +77,7 @@ export async function getCreditBalance(userId: string): Promise<number> {
   const database = await ensureDatabase();
   const row = await database.prepare("SELECT credit_balance FROM user_accounts WHERE user_id = ? LIMIT 1")
     .bind(userId).first<{ credit_balance: number }>();
-  if (!row) throw new HttpError(401, "Увійдіть, щоб користуватися AI-кредитами.");
+  if (!row) throw new HttpError(401, "Увійдіть, щоб користуватися сигналами.");
   return Number(row.credit_balance);
 }
 

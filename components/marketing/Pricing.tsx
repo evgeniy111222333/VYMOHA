@@ -1,5 +1,6 @@
 import { ArrowUpRight, Check, Coins, Sparkles } from "lucide-react";
 import { CREDIT_PACKAGES } from "@/src/domain/billing/packages";
+import { formatSignals } from "@/src/domain/billing/presentation";
 
 export function Pricing() {
   return (
@@ -8,12 +9,12 @@ export function Pricing() {
         <div className="editorial-heading" data-reveal>
           <span className="section-index">03 / PLANS</span>
           <h2>Почніть безплатно.<br /><em>Обирайте глибину за потреби.</em></h2>
-          <p>Швидка перевірка доступна без оплати. Кредити потрібні лише для детального читання документів і персонального висновку.</p>
+          <p>Швидка перевірка доступна без оплати. Сигнали потрібні лише для читання документів і персонального висновку.</p>
         </div>
         <div className="pricing-v3__calculator" data-reveal>
-          <div><Coins size={19} /><span><small>Поглиблений</small><b>30 cr</b></span></div>
+          <div><Coins size={19} /><span><small>Поглиблений</small><b>{formatSignals(12, true)}</b></span></div>
           <i>або</i>
-          <div><Sparkles size={19} /><span><small>Експертний</small><b>65 cr</b></span></div>
+          <div><Sparkles size={19} /><span><small>Експертний</small><b>{formatSignals(30, true)}</b></span></div>
           <p>Безплатний рівень — для швидкого первинного відбору.</p>
         </div>
         <div className="pricing-grid pricing-grid-v3">
@@ -21,7 +22,7 @@ export function Pricing() {
             <article key={pack.id} className={pack.popular ? "price-card price-card--featured" : "price-card"} data-reveal>
               {pack.popular && <span className="price-card__label">Найкраща точка входу</span>}
               <header><span>{pack.name}</span><Coins size={18} /></header>
-              <div className="price-card__credits"><strong>{pack.credits}</strong><i>кредитів</i></div>
+              <div className="price-card__credits"><strong>{pack.credits}</strong><i>сигналів</i></div>
               <div className="price-card__price"><b>{(pack.amountMinor / 100).toLocaleString("uk-UA")} ₴</b><span>одноразово</span></div>
               <p>{pack.description}</p>
               <ul>

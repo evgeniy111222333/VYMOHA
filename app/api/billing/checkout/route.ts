@@ -18,7 +18,7 @@ export async function POST(request: Request): Promise<Response> {
     const user = await requireRequestUser(request);
     await ensureUserAccount(user);
     const parsed = schema.safeParse(await request.json());
-    if (!parsed.success) throw new HttpError(422, "Оберіть пакет кредитів.");
+    if (!parsed.success) throw new HttpError(422, "Оберіть пакет сигналів.");
     const pack = getCreditPackage(parsed.data.packageId);
     if (!pack) throw new HttpError(404, "Пакет не знайдено.");
     const env = runtimeEnv();

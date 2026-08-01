@@ -22,7 +22,29 @@ describe("tender scoring", () => {
   it("rejects a tender whose deadline has passed", () => {
     const result = scoreTender(tenderFixture({ deadline: "2026-07-30T12:00:00+03:00" }), undefined, now);
     expect(result.verdict).toBe("no-go");
-    expect(result.score).toBeLessThan(45);
+    expect(result.score).toBe(23);
+    expect(result.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "deadline-closed", points: -45 }),
+    ]));
+  });
+
+  it("rewards an open tender without structured bid security", () => {
+    const result = scoreTender(tenderFixture(), undefined, now);
+    expect(result.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "no-guarantee", points: 10 }),
+    ]));
+  });
+
+  it("penalizes a high buyer disqualification rate only while submission is open", () => {
+    const buyerContext = {
+      buyerEdrpou: "12345678", sampleSize: 12, decidedAwards: 20, disqualifiedAwards: 11,
+      tendersWithDisqualifications: 8, disqualificationRate: 0.55, averageBids: 2.1,
+      periodStart: "2025-08-01", periodEnd: "2026-08-01", sourceUrl: "https://prozorro.gov.ua/tender/search/?buyer=12345678",
+    };
+    const result = scoreTender(tenderFixture(), undefined, now, buyerContext);
+    expect(result.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "buyer-high-dq", points: -20 }),
+    ]));
   });
 
   it("never recommends an anonymous structured check as ready to bid", () => {

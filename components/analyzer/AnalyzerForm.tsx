@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowRight, BrainCircuit, Coins, FileCheck2, Gauge, LoaderCircle, LockKeyhole, ScanSearch } from "lucide-react";
 import { ANALYSIS_TIERS, type AnalysisTier } from "@/src/domain/billing/packages";
+import { formatSignals } from "@/src/domain/billing/presentation";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { AnalysisResult } from "./AnalysisResult";
 
@@ -31,7 +32,7 @@ export function AnalyzerForm({
     event.preventDefault(); setError(""); setAnalysis(null);
     const tierConfig = ANALYSIS_TIERS[tier];
     if (tier !== "quick" && !signedIn) { window.location.href = signInHref; return; }
-    if (tierConfig.credits > balance) { setError(`Потрібно ${tierConfig.credits} кредитів. На балансі ${balance}.`); return; }
+    if (tierConfig.credits > balance) { setError(`Потрібно ${formatSignals(tierConfig.credits)}. На балансі ${formatSignals(balance)}.`); return; }
     setLoading(true);
     try {
       const response = await fetch("/api/analyze", {
@@ -60,12 +61,12 @@ export function AnalyzerForm({
         {(Object.keys(ANALYSIS_TIERS) as AnalysisTier[]).map((id) => {
           const config = ANALYSIS_TIERS[id]; const Icon = tierIcons[id];
           return <button type="button" role="radio" aria-checked={tier === id} className={tier === id ? "analysis-tier is-active" : "analysis-tier"} key={id} onClick={() => setTier(id)}>
-            <span><Icon size={18} /><b>{config.label}</b></span><p>{config.detail}</p><small>{config.credits ? `${config.credits} cr` : "безплатно"}</small>
+            <span><Icon size={18} /><b>{config.label}</b></span><p>{config.detail}</p><small>{config.credits ? formatSignals(config.credits, true) : "безплатно"}</small>
           </button>;
         })}
       </div>}
       {allowDeepAnalysis && <div className="analyzer-account-line">
-        {signedIn ? <span><Coins size={14} /> Баланс <b>{balance} cr</b></span> : <span><LockKeyhole size={14} /> Поглиблені рівні відкриваються після входу</span>}
+        {signedIn ? <span><Coins size={14} /> Баланс <b>{formatSignals(balance, true)}</b></span> : <span><LockKeyhole size={14} /> Поглиблені рівні відкриваються після входу</span>}
         <span><FileCheck2 size={14} /> {tierDescription}</span>
       </div>}
       <form onSubmit={submit} className="analyzer__form">
@@ -83,7 +84,7 @@ export function AnalyzerForm({
         </div>
         <div className="analyzer__below" id={`tender-hint-${variant}`}>
           <span><FileCheck2 size={14} /> Результат містить джерела, рівень упевненості та наступні дії</span>
-          {tier !== "quick" && <span><Coins size={14} /> Для цього рівня потрібно {ANALYSIS_TIERS[tier].credits} cr</span>}
+          {tier !== "quick" && <span><Coins size={14} /> Для цього рівня потрібно {formatSignals(ANALYSIS_TIERS[tier].credits)}</span>}
         </div>
         {error && <div className="form-error" role="alert">{error}</div>}
       </form>

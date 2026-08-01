@@ -72,6 +72,13 @@ export async function enhanceAnalysis(input: {
       ...input.analysis,
       score,
       confidence: Math.max(25, Math.min(99, Math.round(parsed.confidence))),
+      scoreFactors: [{
+        id: "ai-document-analysis",
+        label: "Оцінка за доказами",
+        points: score,
+        description: "Підсумковий бал сформовано після читання доступних файлів і зіставлення з профілем компанії.",
+        kind: "base",
+      }],
       verdict,
       summary: parsed.summary.slice(0, 900),
       requirements: parsed.requirements.slice(0, 32).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),

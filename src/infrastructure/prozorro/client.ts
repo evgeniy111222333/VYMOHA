@@ -1,6 +1,7 @@
 import type { NormalizedTender } from "@/src/domain/tender/types";
 
 const API_ROOT = "https://public-api.prozorro.gov.ua/api/2.5/tenders";
+const PORTAL_SUMMARY_ROOT = "https://prozorro.gov.ua/api/tenders";
 const TENDER_ID_PATTERN = /UA-\d{4}-\d{2}-\d{2}-\d{6}(?:-[a-z])?/i;
 const INTERNAL_ID_PATTERN = /^[a-f0-9]{32}$/i;
 const MAX_FEED_PAGES = 12;
@@ -50,6 +51,15 @@ export async function fetchTender(value: string): Promise<NormalizedTender> {
 }
 
 async function resolveInternalId(externalId: string): Promise<string> {
+  const summaryResponse = await fetch(`${PORTAL_SUMMARY_ROOT}/${encodeURIComponent(externalId)}/summary`, {
+    headers: { accept: "application/json", "user-agent": "Vymoha/1.0 (+tender-analysis)" },
+    signal: AbortSignal.timeout(8_000), cache: "no-store",
+  });
+  if (summaryResponse.ok) {
+    const summary = (await summaryResponse.json()) as { id?: unknown };
+    if (typeof summary.id === "string" && INTERNAL_ID_PATTERN.test(summary.id)) return summary.id.toLowerCase();
+  }
+
   let url = `${API_ROOT}?descending=1&limit=100&opt_fields=tenderID,dateModified`;
   for (let page = 0; page < MAX_FEED_PAGES; page += 1) {
     const response = await safeFetch(url);

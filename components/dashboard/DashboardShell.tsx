@@ -1,6 +1,7 @@
 import { BarChart3, Building2, Coins, FileArchive, LayoutDashboard, LogOut, Radar, SearchCheck, Settings, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import type { AuthUser } from "@/src/auth/types";
+import { formatSignals } from "@/src/domain/billing/presentation";
 import type { UserAccount } from "@/src/infrastructure/storage/accounts";
 
 const links = [
@@ -10,7 +11,7 @@ const links = [
   { href: "/dashboard/company", label: "Профіль компанії", icon: Building2 },
   { href: "/dashboard/documents", label: "Документи", icon: FileArchive },
   { href: "/dashboard/analytics", label: "Аналітика", icon: BarChart3 },
-  { href: "/dashboard/billing", label: "Кредити", icon: Coins },
+  { href: "/dashboard/billing", label: "Сигнали", icon: Coins },
 ];
 
 export function DashboardShell({ user, account, children }: { user: AuthUser; account: UserAccount; children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export function DashboardShell({ user, account, children }: { user: AuthUser; ac
         </div>
       </aside>
       <div className="dashboard-main">
-        <header className="dashboard-topbar"><div><span>Робочий простір</span><b>Моя компанія</b></div><div className="dashboard-topbar__right"><a href="/dashboard/billing" className="topbar-balance"><Coins size={14} />{account.creditBalance} cr</a><div className="dashboard-user"><span>{initials(user.displayName)}</span><div><b>{user.displayName}</b><small>{account.role === "admin" ? "Адміністратор" : identity}</small></div></div></div></header>
+        <header className="dashboard-topbar"><div><span>Робочий простір</span><b>Моя компанія</b></div><div className="dashboard-topbar__right"><a href="/dashboard/billing" className="topbar-balance"><Coins size={14} />{formatSignals(account.creditBalance, true)}</a><div className="dashboard-user"><span>{initials(user.displayName)}</span><div><b>{user.displayName}</b><small>{account.role === "admin" ? "Адміністратор" : identity}</small></div></div></div></header>
         <div className="dashboard-content">{children}</div>
       </div>
     </div>

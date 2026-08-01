@@ -4,6 +4,27 @@ export type Verdict = "go" | "maybe" | "no-go";
 
 export type Evidence = { label: string; source: string; excerpt?: string };
 
+export type ScoreFactor = {
+  id: string;
+  label: string;
+  points: number;
+  description: string;
+  kind: "base" | "positive" | "negative" | "limit";
+};
+
+export type BuyerContext = {
+  buyerEdrpou: string;
+  sampleSize: number;
+  decidedAwards: number;
+  disqualifiedAwards: number;
+  tendersWithDisqualifications: number;
+  disqualificationRate: number;
+  averageBids: number;
+  periodStart: string;
+  periodEnd: string;
+  sourceUrl: string;
+};
+
 export type TenderRequirement = {
   id: string;
   title: string;
@@ -70,6 +91,8 @@ export type TenderAnalysis = {
   verdict: Verdict;
   score: number;
   confidence: number;
+  scoreFactors: ScoreFactor[];
+  buyerContext?: BuyerContext;
   summary: string;
   generatedAt: string;
   mode: "structured" | "ai-enhanced";

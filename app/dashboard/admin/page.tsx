@@ -11,5 +11,5 @@ export default async function AdminPage() {
   await ensureUserAccount({ id: user.userId, email: user.email, name: user.displayName });
   await requireAdmin(user.userId);
   const users = await listUserAccounts();
-  return <><div className="dashboard-heading"><div><span className="section-kicker">Адміністрування</span><h1>Люди, ролі й ліміти.</h1><p>Видавайте статус адміністратора, нараховуйте кредити та зупиняйте доступ без ручної роботи з базою.</p></div><div className="admin-badge"><ShieldCheck size={18} /> Admin control</div></div><section className="dashboard-card admin-card"><div className="dashboard-card__heading"><div><Users size={18} /><h2>Користувачі</h2></div><span>{users.length} акаунтів</span></div><AdminUsers initialUsers={users} /></section></>;
+  return <><div className="dashboard-heading"><div><span className="section-kicker">Адміністрування</span><h1>Люди, ролі й ліміти.</h1><p>Видавайте статус адміністратора, нараховуйте сигнали та зупиняйте доступ без ручної роботи з базою.</p></div><div className="admin-badge"><ShieldCheck size={18} /> Admin control</div></div><section className="dashboard-card admin-card"><div className="dashboard-card__heading"><div><Users size={18} /><h2>Користувачі</h2></div><span>{users.length} акаунтів</span></div><AdminUsers initialUsers={users} /></section></>;
 }

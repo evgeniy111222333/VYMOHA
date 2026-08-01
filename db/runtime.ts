@@ -101,6 +101,7 @@ async function initialize(database: D1Database): Promise<void> {
       created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, user_agent_hash TEXT, revoked_at TEXT
     )`),
   ]);
+  await ensureUserAccountColumns(database);
   await database.batch([
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_organizations_owner_user_id ON organizations(owner_user_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_organizations_edrpou ON organizations(edrpou)"),
@@ -129,4 +130,18 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
+}
+
+async function ensureUserAccountColumns(database: D1Database): Promise<void> {
+  const tableInfo = await database.prepare("PRAGMA table_info(user_accounts)").all<{ name: string }>();
+  const columns = new Set(tableInfo.results.map((column) => column.name));
+  const additions: D1PreparedStatement[] = [];
+  if (!columns.has("phone")) additions.push(database.prepare("ALTER TABLE user_accounts ADD COLUMN phone TEXT"));
+  if (!columns.has("avatar_url")) additions.push(database.prepare("ALTER TABLE user_accounts ADD COLUMN avatar_url TEXT"));
+  if (!columns.has("email_verified")) additions.push(database.prepare("ALTER TABLE user_accounts ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0"));
+  if (!columns.has("phone_verified")) additions.push(database.prepare("ALTER TABLE user_accounts ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 0"));
+  if (additions.length) await database.batch(additions);
+  if (!columns.has("email_verified")) {
+    await database.prepare("UPDATE user_accounts SET email_verified = 1 WHERE email NOT LIKE '%@phone.vymoha.invalid'").run();
+  }
 }

@@ -27,7 +27,7 @@ export function AdminUsers({ initialUsers }: { initialUsers: UserAccount[] }) {
         <span className={`admin-avatar admin-avatar--${user.role}`}>{user.displayName.slice(0, 2).toUpperCase()}</span>
         <div><b>{user.displayName}</b><small>{user.phone ?? user.email}</small><code>{user.userId.slice(0, 12)}…</code></div>
       </div>
-      <div className="admin-user-card__metric"><small>Баланс</small><b><Coins size={15} /> {user.creditBalance}</b></div>
+      <div className="admin-user-card__metric"><small>Баланс сигналів</small><b><Coins size={15} /> {user.creditBalance}</b></div>
       <div className="admin-user-card__controls">
         <button onClick={() => mutate(user.userId, { action: "role", role: user.role === "admin" ? "user" : "admin" })} disabled={Boolean(busy)}>
           {busy === `${user.userId}:role` ? <LoaderCircle className="spin" size={15} /> : user.role === "admin" ? <BadgeCheck size={15} /> : <ShieldCheck size={15} />}
