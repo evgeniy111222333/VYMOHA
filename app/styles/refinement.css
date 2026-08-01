@@ -45,7 +45,7 @@ h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
   position: absolute;
   z-index: 2;
   left: 58%;
-  right: 11%;
+  right: 18%;
   top: calc(50% - 1px);
   width: auto;
   height: 2px;
