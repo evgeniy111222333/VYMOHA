@@ -1,0 +1,226 @@
+import { ensureDatabase, runtimeEnv } from "@/db/runtime";
+import type { CompanyProfile, TenderAnalysis } from "@/src/domain/tender/types";
+import { sha256 } from "@/src/lib/security";
+
+export type StoredAnalysis = {
+  id: string;
+  tenderExternalId: string;
+  title: string;
+  buyer: string;
+  score: number;
+  verdict: string;
+  mode: string;
+  deadline: string | null;
+  createdAt: string;
+};
+
+export type StoredDocument = {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: string;
+  createdAt: string;
+};
+
+export type PrivateDocument = StoredDocument & { objectKey: string };
+
+export type StoredWatch = {
+  id: string;
+  tenderExternalId: string;
+  lastModified: string | null;
+  notifyEmail: string;
+  active: boolean;
+  createdAt: string;
+};
+
+export type ActiveWatch = StoredWatch & { userId: string };
+
+export async function getCompanyProfile(userId: string): Promise<(CompanyProfile & { region?: string }) | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(`SELECT name, edrpou, region, cpv_codes_json, capabilities_json, certifications_json
+    FROM organizations WHERE owner_user_id = ? LIMIT 1`).bind(userId).first<Record<string, unknown>>();
+  if (!row) return null;
+  return {
+    name: String(row.name), edrpou: row.edrpou ? String(row.edrpou) : undefined,
+    region: row.region ? String(row.region) : undefined,
+    cpvCodes: parseStringArray(row.cpv_codes_json),
+    capabilities: parseStringArray(row.capabilities_json),
+    certifications: parseStringArray(row.certifications_json),
+  };
+}
+
+export async function upsertCompanyProfile(userId: string, profile: CompanyProfile & { region?: string }): Promise<void> {
+  const database = await ensureDatabase();
+  const now = new Date().toISOString();
+  await database.prepare(`INSERT INTO organizations (
+      id, owner_user_id, name, edrpou, region, cpv_codes_json, capabilities_json, certifications_json, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(owner_user_id) DO UPDATE SET
+      name = excluded.name, edrpou = excluded.edrpou, region = excluded.region,
+      cpv_codes_json = excluded.cpv_codes_json, capabilities_json = excluded.capabilities_json,
+      certifications_json = excluded.certifications_json, updated_at = excluded.updated_at`).bind(
+    crypto.randomUUID(), userId, profile.name ?? "Моя компанія", profile.edrpou ?? null, profile.region ?? null,
+    JSON.stringify(profile.cpvCodes), JSON.stringify(profile.capabilities), JSON.stringify(profile.certifications), now, now,
+  ).run();
+}
+
+export async function saveAnalysis(userId: string, analysis: TenderAnalysis): Promise<void> {
+  const database = await ensureDatabase();
+  const serialized = JSON.stringify(analysis);
+  const contentHash = await sha256(`${analysis.tender.externalId}:${analysis.tender.dateModified ?? "unknown"}:${analysis.mode}`);
+  await database.prepare(`INSERT INTO analyses (
+    id, user_id, tender_external_id, tender_internal_id, source_url, title, buyer,
+    amount_minor, currency, deadline, verdict, score, mode, result_json, content_hash, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(user_id, content_hash) DO UPDATE SET
+    result_json = excluded.result_json, verdict = excluded.verdict, score = excluded.score,
+    mode = excluded.mode, created_at = excluded.created_at`).bind(
+    analysis.id, userId, analysis.tender.externalId, analysis.tender.internalId,
+    analysis.tender.sourceUrl, analysis.tender.title, analysis.tender.buyer,
+    analysis.tender.amount ? Math.round(analysis.tender.amount * 100) : null,
+    analysis.tender.currency ?? null, analysis.tender.deadline ?? null, analysis.verdict,
+    analysis.score, analysis.mode, serialized, contentHash, analysis.generatedAt,
+  ).run();
+}
+
+export async function listAnalyses(userId: string, limit = 20): Promise<StoredAnalysis[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(`SELECT id, tender_external_id, title, buyer, score, verdict, mode, deadline, created_at
+    FROM analyses WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`).bind(userId, Math.min(limit, 50)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    id: String(row.id), tenderExternalId: String(row.tender_external_id), title: String(row.title),
+    buyer: String(row.buyer), score: Number(row.score), verdict: String(row.verdict), mode: String(row.mode),
+    deadline: row.deadline ? String(row.deadline) : null, createdAt: String(row.created_at),
+  }));
+}
+
+export async function saveDocument(
+  userId: string,
+  input: { name: string; mimeType: string; bytes: ArrayBuffer },
+): Promise<StoredDocument> {
+  const database = await ensureDatabase();
+  const hash = await hashBuffer(input.bytes);
+  const existing = await database.prepare(`SELECT id, name, mime_type, size_bytes, status, created_at
+    FROM documents WHERE user_id = ? AND sha256 = ? LIMIT 1`).bind(userId, hash).first<Record<string, unknown>>();
+  if (existing) return mapDocument(existing);
+
+  const id = crypto.randomUUID();
+  const objectKey = `${await sha256(userId)}/${id}`;
+  await runtimeEnv().DOCUMENTS.put(objectKey, input.bytes, {
+    httpMetadata: { contentType: input.mimeType },
+    customMetadata: { originalName: input.name },
+  });
+  const createdAt = new Date().toISOString();
+  await database.prepare(`INSERT INTO documents (
+    id, user_id, name, object_key, mime_type, size_bytes, sha256, status, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ready', ?)`).bind(
+    id, userId, input.name, objectKey, input.mimeType, input.bytes.byteLength, hash, createdAt,
+  ).run();
+  return { id, name: input.name, mimeType: input.mimeType, sizeBytes: input.bytes.byteLength, status: "ready", createdAt };
+}
+
+export async function listDocuments(userId: string): Promise<StoredDocument[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(`SELECT id, name, mime_type, size_bytes, status, created_at
+    FROM documents WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`).bind(userId).all<Record<string, unknown>>();
+  return result.results.map(mapDocument);
+}
+
+export async function getDocument(userId: string, documentId: string): Promise<PrivateDocument | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(`SELECT id, name, object_key, mime_type, size_bytes, status, created_at
+    FROM documents WHERE id = ? AND user_id = ? LIMIT 1`).bind(documentId, userId).first<Record<string, unknown>>();
+  if (!row) return null;
+  return { ...mapDocument(row), objectKey: String(row.object_key) };
+}
+
+export async function deleteDocument(userId: string, documentId: string): Promise<boolean> {
+  const document = await getDocument(userId, documentId);
+  if (!document) return false;
+  await runtimeEnv().DOCUMENTS.delete(document.objectKey);
+  const database = await ensureDatabase();
+  await database.prepare("DELETE FROM documents WHERE id = ? AND user_id = ?").bind(documentId, userId).run();
+  return true;
+}
+
+export async function setWatch(userId: string, email: string, tenderExternalId: string, modified?: string): Promise<void> {
+  const database = await ensureDatabase();
+  await database.prepare(`INSERT INTO watches (
+    id, user_id, tender_external_id, last_modified, notify_email, active, created_at
+  ) VALUES (?, ?, ?, ?, ?, 1, ?)
+  ON CONFLICT(user_id, tender_external_id) DO UPDATE SET
+    notify_email = excluded.notify_email, last_modified = excluded.last_modified, active = 1`).bind(
+    crypto.randomUUID(), userId, tenderExternalId, modified ?? null, email, new Date().toISOString(),
+  ).run();
+}
+
+export async function listWatches(userId: string): Promise<StoredWatch[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(`SELECT id, tender_external_id, last_modified, notify_email, active, created_at
+    FROM watches WHERE user_id = ? ORDER BY created_at DESC LIMIT 100`).bind(userId).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    id: String(row.id), tenderExternalId: String(row.tender_external_id),
+    lastModified: row.last_modified ? String(row.last_modified) : null,
+    notifyEmail: String(row.notify_email), active: Boolean(row.active), createdAt: String(row.created_at),
+  }));
+}
+
+export async function listActiveWatches(limit = 200): Promise<ActiveWatch[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(`SELECT id, user_id, tender_external_id, last_modified, notify_email, active, created_at
+    FROM watches WHERE active = 1 ORDER BY created_at ASC LIMIT ?`).bind(Math.min(limit, 500)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    id: String(row.id), userId: String(row.user_id), tenderExternalId: String(row.tender_external_id),
+    lastModified: row.last_modified ? String(row.last_modified) : null,
+    notifyEmail: String(row.notify_email), active: Boolean(row.active), createdAt: String(row.created_at),
+  }));
+}
+
+export async function updateWatchVersion(watchId: string, modified: string | null): Promise<void> {
+  const database = await ensureDatabase();
+  await database.prepare("UPDATE watches SET last_modified = ? WHERE id = ?").bind(modified, watchId).run();
+}
+
+export async function consumeRateLimit(bucketKey: string, limit: number, windowSeconds: number): Promise<boolean> {
+  const database = await ensureDatabase();
+  const now = Math.floor(Date.now() / 1000);
+  const resetAt = now + windowSeconds;
+  await database.prepare(`INSERT INTO rate_limits (bucket_key, count, reset_at) VALUES (?, 1, ?)
+    ON CONFLICT(bucket_key) DO UPDATE SET
+      count = CASE WHEN rate_limits.reset_at <= ? THEN 1 ELSE rate_limits.count + 1 END,
+      reset_at = CASE WHEN rate_limits.reset_at <= ? THEN ? ELSE rate_limits.reset_at END`).bind(
+    bucketKey, resetAt, now, now, resetAt,
+  ).run();
+  const row = await database.prepare("SELECT count FROM rate_limits WHERE bucket_key = ?").bind(bucketKey).first<{ count: number }>();
+  return Boolean(row && row.count <= limit);
+}
+
+export async function writeAuditEvent(input: {
+  userId?: string; action: string; resourceType: string; resourceId?: string; ipHash?: string; metadata?: unknown;
+}): Promise<void> {
+  const database = await ensureDatabase();
+  await database.prepare(`INSERT INTO audit_events (
+    id, user_id, action, resource_type, resource_id, ip_hash, metadata_json, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+    crypto.randomUUID(), input.userId ?? null, input.action, input.resourceType,
+    input.resourceId ?? null, input.ipHash ?? null, JSON.stringify(input.metadata ?? {}), new Date().toISOString(),
+  ).run();
+}
+
+function parseStringArray(value: unknown): string[] {
+  try { const parsed = JSON.parse(String(value)); return Array.isArray(parsed) ? parsed.map(String) : []; }
+  catch { return []; }
+}
+
+async function hashBuffer(bytes: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function mapDocument(row: Record<string, unknown>): StoredDocument {
+  return {
+    id: String(row.id), name: String(row.name), mimeType: String(row.mime_type),
+    sizeBytes: Number(row.size_bytes), status: String(row.status), createdAt: String(row.created_at),
+  };
+}

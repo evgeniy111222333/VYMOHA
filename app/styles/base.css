@@ -1,0 +1,68 @@
+:root {
+  --paper: #f3f0e7;
+  --paper-2: #e9e5da;
+  --ink: #151713;
+  --muted: #65685f;
+  --line: #c9c6ba;
+  --forest: #145b3d;
+  --forest-dark: #0d412c;
+  --mint: #d9ebdf;
+  --amber: #e7a83c;
+  --amber-soft: #f7e6c8;
+  --red: #bf4d3f;
+  --red-soft: #f4d9d5;
+  --white: #fffef9;
+  --acid: #8fe22b;
+  --shadow: 0 24px 70px rgba(37, 39, 33, .12);
+  --radius: 18px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--font-geist-sans), Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.not-found { min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: clamp(24px, 5vw, 64px); color: #f7f7f1; background: #111412; }
+.not-found > div { max-width: 900px; padding-bottom: 4vh; }
+.not-found .mono { color: var(--acid); }
+.not-found h1 { margin: 20px 0; font-size: clamp(54px, 10vw, 132px); line-height: .86; letter-spacing: -.075em; }
+.not-found p { margin-bottom: 28px; color: #aeb4ae; }
+body::selection { background: var(--forest); color: white; }
+a { color: inherit; text-decoration: none; }
+button, input, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+.container { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+.mono { font-family: var(--font-geist-mono), monospace; letter-spacing: -.03em; }
+.spin { animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 760; font-size: 21px; letter-spacing: -.06em; }
+.brand__mark { width: 28px; height: 28px; display: grid; align-content: center; gap: 3px; padding: 6px; background: var(--ink); border-radius: 7px; transform: rotate(-2deg); }
+.brand__mark i { display: block; height: 2px; background: var(--paper); border-radius: 4px; }
+.brand__mark i:nth-child(2) { width: 72%; }
+.brand__mark i:nth-child(3) { width: 45%; }
+.button { min-height: 48px; padding: 0 20px; border: 1px solid transparent; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: 690; font-size: 14px; cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+.button:hover { transform: translateY(-1px); }
+.button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid rgba(20, 91, 61, .25); outline-offset: 3px; }
+.button:disabled { opacity: .62; cursor: wait; transform: none; }
+.button--primary { background: var(--forest); color: white; box-shadow: 0 9px 24px rgba(20,91,61,.18); }
+.button--primary:hover { background: var(--forest-dark); }
+.button--dark { background: var(--ink); color: var(--paper); }
+.button--ghost { border-color: var(--line); background: transparent; }
+.button--outline { border-color: var(--ink); background: transparent; width: 100%; }
+.button--light { background: var(--paper); color: var(--ink); width: 100%; }
+.button--small { min-height: 40px; padding-inline: 15px; }
+.button--full { width: 100%; }
+.section-kicker { display: inline-block; font-size: 11px; font-weight: 780; letter-spacing: .15em; text-transform: uppercase; color: var(--forest); }
+.section-lead { color: var(--muted); line-height: 1.7; }
+.risk-badge { display: inline-flex; width: max-content; padding: 5px 8px; border-radius: 99px; font: 650 10px var(--font-geist-mono), monospace; text-transform: uppercase; }
+.risk-badge--critical, .risk-badge--high { color: #8b241b; background: var(--red-soft); }
+.risk-badge--medium { color: #80520b; background: var(--amber-soft); }
+.risk-badge--low { color: #345544; background: var(--mint); }
+.form-error { padding: 12px 14px; border-radius: 9px; color: #8c2c22; background: var(--red-soft); font-size: 13px; }
+
+@media (max-width: 720px) {
+  .container { width: min(100% - 24px, 1180px); }
+  .button { min-height: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
