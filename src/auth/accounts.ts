@@ -11,6 +11,7 @@ type PasswordRegistration = {
   displayName: string;
   password: string;
   verified: boolean;
+  claimUserId?: string;
 };
 
 export async function registerPasswordUser(input: PasswordRegistration): Promise<string> {
@@ -21,7 +22,21 @@ export async function registerPasswordUser(input: PasswordRegistration): Promise
   if (input.provider === "email") {
     const existingAccount = await database.prepare("SELECT user_id FROM user_accounts WHERE email = ? LIMIT 1")
       .bind(input.subject).first();
-    if (existingAccount) throw new HttpError(409, "Ця адреса вже використовується. Увійдіть через Google або зверніться до підтримки.");
+    if (existingAccount) {
+      const accountUserId = String((existingAccount as Record<string, unknown>).user_id);
+      if (!input.claimUserId || input.claimUserId !== accountUserId) {
+        throw new HttpError(409, "Ця адреса вже використовується. Увійдіть через Google або зверніться до підтримки.");
+      }
+      const secret = await hashPassword(input.password);
+      const now = new Date().toISOString();
+      await database.prepare(`INSERT INTO auth_identities (
+        id, user_id, provider, provider_subject, secret_hash, secret_salt, verified_at, created_at, updated_at
+      ) VALUES (?, ?, 'email', ?, ?, ?, ?, ?, ?)`).bind(
+        crypto.randomUUID(), accountUserId, input.subject, secret.hash, secret.salt, now, now, now,
+      ).run();
+      await ensureUserAccount({ id: accountUserId, email: input.subject, name: input.displayName, emailVerified: true });
+      return accountUserId;
+    }
   } else {
     const existingAccount = await database.prepare("SELECT user_id FROM user_accounts WHERE phone = ? LIMIT 1")
       .bind(input.subject).first();
