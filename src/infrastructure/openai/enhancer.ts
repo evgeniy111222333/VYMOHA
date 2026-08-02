@@ -80,7 +80,7 @@ function isGeminiModel(model: string): boolean {
 
 function toGeminiSchema(schema: Record<string, unknown>): Record<string, unknown> {
   // Gemini підтримує підмножину JSON Schema. Видаляємо поля, які воно не приймає.
-  const blacklist = new Set(["strict", "additionalProperties"]);
+  const blacklist = new Set(["strict", "additionalProperties", "minimum", "maximum", "maxItems", "minItems"]);
   const visit = (node: unknown): unknown => {
     if (Array.isArray(node)) return node.map(visit);
     if (node && typeof node === "object") {
