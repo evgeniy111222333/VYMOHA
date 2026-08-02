@@ -117,3 +117,46 @@ export function scoreTender(
     factors,
   };
 }
+
+export type MultiVectorScoringInput = {
+  requirements: Array<{ category: string; status: "met" | "missing" | "review" | "unknown" }>;
+  risks: Array<{ level: "critical" | "high" | "medium" | "low" }>;
+  requiredDocumentsChecklist?: Array<{ category: string }>;
+  hasCompanyProfile: boolean;
+  submissionOpen: boolean;
+};
+
+export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { score: number; verdict: Verdict } {
+  const reqs = input.requirements || [];
+  const statutoryReqs = reqs.filter((r) => r.category === "statutory");
+  const qualReqs = reqs.filter((r) => r.category === "qualification" || r.category === "experience");
+  const techReqs = reqs.filter((r) => r.category === "technical");
+  const finReqs = reqs.filter((r) => r.category === "financial");
+
+  function calcVector(arr: typeof reqs, maxPoints: number): number {
+    if (arr.length === 0) return maxPoints;
+    const met = arr.filter((r) => r.status === "met").length;
+    const review = arr.filter((r) => r.status === "review" || r.status === "unknown").length;
+    return Math.round((met * maxPoints + review * maxPoints * 0.5) / arr.length);
+  }
+
+  const vStatutory = calcVector(statutoryReqs, 25);
+  const vQual = calcVector(qualReqs, 35);
+  const vTech = calcVector(techReqs, 25);
+  const vFin = calcVector(finReqs, 15);
+
+  let raw = vStatutory + vQual + vTech + vFin;
+
+  for (const risk of input.risks || []) {
+    if (risk.level === "critical") raw -= 25;
+    else if (risk.level === "high") raw -= 14;
+    else if (risk.level === "medium") raw -= 7;
+    else if (risk.level === "low") raw -= 3;
+  }
+
+  const hasCriticalStop = (input.risks || []).some((r) => r.level === "critical") || !input.submissionOpen;
+  const score = Math.max(0, Math.min(input.hasCompanyProfile ? 100 : 69, Math.round(raw)));
+
+  const verdict: Verdict = hasCriticalStop ? "no-go" : score >= 75 ? "go" : score >= 45 ? "maybe" : "no-go";
+  return { score, verdict };
+}

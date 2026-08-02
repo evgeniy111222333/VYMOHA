@@ -364,7 +364,7 @@ async function callGemini(input: {
         response_mime_type: "application/json",
         response_schema: toGeminiSchema(TENDER_ANALYSIS_SCHEMA as Record<string, unknown>),
         max_output_tokens: expert ? 16_384 : 8_192,
-        temperature: expert ? 0.4 : 0.2,
+        temperature: 0.0,
         ...getGeminiThinkingConfig(currentModel, expert),
       },
     };
@@ -502,6 +502,8 @@ function normalizeGeminiUsage(payload: GeminiResponse, model: string): AIUsage {
   return { model, inputTokens, cachedInputTokens, outputTokens, costMicrousd: estimateOpenAICostMicrousd({ model, inputTokens, cachedInputTokens, outputTokens }) };
 }
 
+import { calculateWeightedMatrixScore } from "@/src/domain/tender/scoring";
+
 function finalizeAnalysis(input: {
   analysis: TenderAnalysis;
   company?: CompanyProfile;
@@ -512,8 +514,19 @@ function finalizeAnalysis(input: {
 }): { analysis: TenderAnalysis; usage: AIUsage } {
   const { analysis, company, parsed, usage, tier } = input;
   const hasCompany = Boolean(company?.cpvCodes.length || company?.capabilities.length);
-  const score = Math.max(0, Math.min(hasCompany ? 100 : 69, Math.round(parsed.score)));
-  const verdict = (!hasCompany && parsed.verdict === "go" ? "maybe" : parsed.verdict) as TenderAnalysis["verdict"];
+  const deadline = analysis.tender.deadline ? new Date(analysis.tender.deadline) : null;
+  const submissionOpen = !deadline || deadline.getTime() > Date.now();
+
+  const matrixResult = calculateWeightedMatrixScore({
+    requirements: parsed.requirements,
+    risks: parsed.risks,
+    requiredDocumentsChecklist: parsed.requiredDocumentsChecklist,
+    hasCompanyProfile: hasCompany,
+    submissionOpen,
+  });
+
+  const score = matrixResult.score;
+  const verdict = matrixResult.verdict;
   const sourceUrl = analysis.tender.sourceUrl;
   return {
     analysis: {

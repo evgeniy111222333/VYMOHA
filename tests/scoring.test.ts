@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
-import { scoreTender } from "@/src/domain/tender/scoring";
+import { calculateWeightedMatrixScore, scoreTender } from "@/src/domain/tender/scoring";
 import { tenderFixture } from "./fixtures";
 
 const now = new Date("2026-08-01T12:00:00+03:00");
@@ -70,5 +70,29 @@ describe("tender scoring", () => {
       guaranteeAmount: 25_000,
     }), undefined, now, undefined, "deep");
     expect(deep.nextActions.length).toBeGreaterThan(1);
+  });
+
+  it("calculates deterministic weighted matrix score with hard stop factor caps", () => {
+    const { score, verdict } = calculateWeightedMatrixScore({
+      requirements: [
+        { category: "statutory", status: "met" },
+        { category: "qualification", status: "met" },
+        { category: "technical", status: "met" },
+        { category: "financial", status: "met" },
+      ],
+      risks: [],
+      hasCompanyProfile: true,
+      submissionOpen: true,
+    });
+    expect(score).toBe(100);
+    expect(verdict).toBe("go");
+
+    const stopped = calculateWeightedMatrixScore({
+      requirements: [{ category: "statutory", status: "met" }],
+      risks: [{ level: "critical" }],
+      hasCompanyProfile: true,
+      submissionOpen: true,
+    });
+    expect(stopped.verdict).toBe("no-go");
   });
 });
