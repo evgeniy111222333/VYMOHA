@@ -16,10 +16,11 @@
 .analyze-page .analyzer { position: relative; z-index: 2; }.analyze-page .analyzer__form { padding: 20px; border-radius: 0 0 12px 12px; color: #e6e5de; background: #161916; border: 1px solid #2b3029; border-top: 0; }.analyze-page .analyzer__control { box-shadow: 8px 8px 0 var(--signal); }.analyze-page .analyzer__below { color: #747a70; }
 .analysis-result { margin-top: 70px; padding: 32px; color: var(--night); border: 0; border-radius: 16px; background: var(--cream); box-shadow: 12px 12px 0 var(--violet); }
 .analysis-result__head { padding-bottom: 25px; border-bottom: 1px solid #c8c1b3; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.analysis-result__head > div { flex: 1 1 auto; min-width: 0; }
 .analysis-result__head .mono { display: inline-block; padding: 3px 9px; border-radius: 5px; background: rgba(91, 74, 255, 0.08); color: #5b4aff; font: 600 11px var(--font-mono), monospace; letter-spacing: .04em; }
-.analysis-result__head h2 { max-width: 820px; margin: 10px 0 8px; font-size: clamp(18px, 1.8vw, 22px); font-weight: 600; line-height: 1.45; letter-spacing: -0.01em; color: #171a17; }
+.analysis-result__head h2 { max-width: none; margin: 10px 0 8px; font-size: clamp(18px, 1.8vw, 22px); font-weight: 600; line-height: 1.45; letter-spacing: -0.01em; color: #171a17; word-break: break-word; }
 .analysis-result__head p { margin: 6px 0 0; color: #5c6258; font-size: 13px; line-height: 1.45; }
-.analysis-result__head > a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(91, 74, 255, 0.08); color: #5b4aff; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s ease; }
+.analysis-result__head > a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(91, 74, 255, 0.08); color: #5b4aff; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s ease; }
 .analysis-result__head > a:hover { background: rgba(91, 74, 255, 0.16); }
 .analysis-summary { border-radius: 10px; background: var(--night); }.analysis-summary h3 { color: var(--signal); }.analysis-summary__facts b { display: inline-flex; align-items: center; gap: 5px; }
 .analysis-context-grid { margin: 0 0 18px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 14px; align-items: stretch; }
