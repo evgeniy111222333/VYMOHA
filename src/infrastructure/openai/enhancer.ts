@@ -342,7 +342,7 @@ async function callGemini(input: {
     }
   });
 
-  const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+  const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash"];
   const modelsToTry: string[] = [model];
   for (const m of DEFAULT_GEMINI_FALLBACKS) {
     if (!modelsToTry.includes(m)) modelsToTry.push(m);
@@ -413,13 +413,13 @@ async function callGemini(input: {
       if (isQuotaError && modelIndex < modelsToTry.length - 1) {
         const nextModel = modelsToTry[modelIndex + 1];
         console.warn(`[gemini:${analysisId}] ⚠️ 429 Quota error on model=${currentModel}. Falling back to next model=${nextModel}...`);
-        lastError = new OpenAIAnalysisError(payload.error?.message ?? `Квоту для ${currentModel} вичерпано.`);
+        lastError = new OpenAIAnalysisError(`Квоту для ${currentModel} вичерпано. Технічна проблема з AI-сервісом.`);
         continue;
       }
 
       console.error(`[gemini:${analysisId}] ✗ ${response.status} ${response.statusText} model=${currentModel} tier=${tier} duration=${durationMs}ms`);
       console.error(`[gemini:${analysisId}]   error body: ${errorBody}`);
-      throw new OpenAIAnalysisError(payload.error?.message ?? "Gemini відхилив запит аналізу.");
+      throw new OpenAIAnalysisError(payload.error?.message ?? "Технічна проблема з AI-сервісом. Спробуйте пізніше.");
     }
 
     const candidate = payload.candidates?.[0];
@@ -448,7 +448,7 @@ async function callGemini(input: {
     return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
   }
 
-  throw lastError ?? new OpenAIAnalysisError("Всі доступні моделі Gemini вичерпали квоту. Спробуйте через хвилину.");
+  throw lastError ?? new OpenAIAnalysisError("Технічна проблема з AI-сервісом. Спробуйте пізніше.");
 }
 
 function parseStructuredOutput(raw: string): EnhancedTenderPayload {

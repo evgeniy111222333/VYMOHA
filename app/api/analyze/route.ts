@@ -81,7 +81,10 @@ export async function POST(request: Request): Promise<Response> {
         await completeAnalysisUsage({ analysisId: analysis.id, ...enhanced.usage });
       } catch (error) {
         await refundAnalysisCredits(user.id, analysis.id, error instanceof Error ? error.name : "unknown");
-        if (error instanceof OpenAIAnalysisError) throw new HttpError(502, "Не вдалося завершити звіт. Баланс не змінився — спробуйте ще раз.");
+        if (error instanceof OpenAIAnalysisError) {
+          const msg = error.message.includes("Баланс") ? error.message : `${error.message} Баланс не змінився — спробуйте пізніше.`;
+          throw new HttpError(502, msg);
+        }
         throw error;
       }
     }
