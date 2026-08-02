@@ -342,80 +342,113 @@ async function callGemini(input: {
     }
   });
 
-  const body = {
-    contents: [{ role: "user", parts }],
-    generationConfig: {
-      response_mime_type: "application/json",
-      response_schema: toGeminiSchema(TENDER_ANALYSIS_SCHEMA as Record<string, unknown>),
-      max_output_tokens: expert ? 9_000 : 6_000,
-      temperature: expert ? 0.4 : 0.2,
-      ...getGeminiThinkingConfig(model, expert),
-    },
-  };
+  const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+  const modelsToTry: string[] = [model];
+  for (const m of DEFAULT_GEMINI_FALLBACKS) {
+    if (!modelsToTry.includes(m)) modelsToTry.push(m);
+  }
 
-  const bodyJson = JSON.stringify(body);
-  console.log(`[gemini:${analysisId}]   prompt length=${prompt.length} chars, request body=${bodyJson.length} bytes, parts=${parts.length}`);
+  let lastError: Error | null = null;
 
-  // ─── Create debug entry (before request) ───────────────────────────────────
-  const debugEntry: AnalysisDebugEntry = {
-    id: analysisId,
-    timestamp: new Date().toISOString(),
-    provider: "gemini",
-    model,
-    tier,
-    promptPreview: prompt.slice(0, 1000),
-    promptLengthChars: prompt.length,
-    files: fileDebugInfo,
-    requestBodySizeBytes: bodyJson.length,
-    responseStatus: null,
-    responseError: null,
-    durationMs: null,
-  };
+  for (let modelIndex = 0; modelIndex < modelsToTry.length; modelIndex++) {
+    const currentModel = modelsToTry[modelIndex]!;
+    const body = {
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        response_mime_type: "application/json",
+        response_schema: toGeminiSchema(TENDER_ANALYSIS_SCHEMA as Record<string, unknown>),
+        max_output_tokens: expert ? 9_000 : 6_000,
+        temperature: expert ? 0.4 : 0.2,
+        ...getGeminiThinkingConfig(currentModel, expert),
+      },
+    };
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "x-goog-api-key": apiKey, "content-type": "application/json" },
-    body: bodyJson,
-    signal: AbortSignal.timeout(expert ? 150_000 : 90_000),
-  });
-  const payload = (await response.json()) as GeminiResponse;
-  const durationMs = Date.now() - startTime;
-  debugEntry.responseStatus = response.status;
-  debugEntry.durationMs = durationMs;
+    const bodyJson = JSON.stringify(body);
+    console.log(`[gemini:${analysisId}]   [try ${modelIndex + 1}/${modelsToTry.length}] model=${currentModel} prompt length=${prompt.length} chars, request body=${bodyJson.length} bytes, parts=${parts.length}`);
 
-  if (!response.ok) {
-    const errorBody = JSON.stringify(payload).slice(0, 800);
-    debugEntry.responseError = errorBody;
+    const debugEntry: AnalysisDebugEntry = {
+      id: analysisId,
+      timestamp: new Date().toISOString(),
+      provider: "gemini",
+      model: currentModel,
+      tier,
+      promptPreview: prompt.slice(0, 1000),
+      promptLengthChars: prompt.length,
+      files: fileDebugInfo,
+      requestBodySizeBytes: bodyJson.length,
+      responseStatus: null,
+      responseError: null,
+      durationMs: null,
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(currentModel)}:generateContent`;
+    const attemptStartTime = Date.now();
+    let response: Response;
+    let payload: GeminiResponse;
+
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "x-goog-api-key": apiKey, "content-type": "application/json" },
+        body: bodyJson,
+        signal: AbortSignal.timeout(expert ? 150_000 : 90_000),
+      });
+      payload = (await response.json()) as GeminiResponse;
+    } catch (err) {
+      console.error(`[gemini:${analysisId}] ✗ Network error on model=${currentModel}`, err);
+      lastError = err instanceof Error ? err : new Error(String(err));
+      continue;
+    }
+
+    const durationMs = Date.now() - attemptStartTime;
+    debugEntry.responseStatus = response.status;
+    debugEntry.durationMs = durationMs;
+
+    if (!response.ok) {
+      const errorBody = JSON.stringify(payload).slice(0, 800);
+      debugEntry.responseError = errorBody;
+      pushDebugEntry(debugEntry);
+
+      const isQuotaError = response.status === 429 || errorBody.includes("RESOURCE_EXHAUSTED") || errorBody.includes("Quota exceeded");
+      if (isQuotaError && modelIndex < modelsToTry.length - 1) {
+        const nextModel = modelsToTry[modelIndex + 1];
+        console.warn(`[gemini:${analysisId}] ⚠️ 429 Quota error on model=${currentModel}. Falling back to next model=${nextModel}...`);
+        lastError = new OpenAIAnalysisError(payload.error?.message ?? `Квоту для ${currentModel} вичерпано.`);
+        continue;
+      }
+
+      console.error(`[gemini:${analysisId}] ✗ ${response.status} ${response.statusText} model=${currentModel} tier=${tier} duration=${durationMs}ms`);
+      console.error(`[gemini:${analysisId}]   error body: ${errorBody}`);
+      throw new OpenAIAnalysisError(payload.error?.message ?? "Gemini відхилив запит аналізу.");
+    }
+
+    const candidate = payload.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    console.log(`[gemini:${analysisId}] ✓ ${response.status} model=${currentModel} finishReason=${finishReason ?? "?"} duration=${durationMs}ms`);
+    if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
+      console.error(`[gemini:${analysisId}]   unexpected finishReason=${finishReason} model=${currentModel}`);
+    }
+
     pushDebugEntry(debugEntry);
-    console.error(`[gemini:${analysisId}] ✗ ${response.status} ${response.statusText} model=${model} tier=${tier} duration=${durationMs}ms`);
-    console.error(`[gemini:${analysisId}]   error body: ${errorBody}`);
-    throw new OpenAIAnalysisError(payload.error?.message ?? "Gemini відхилив запит аналізу.");
+
+    const responseParts = candidate?.content?.parts ?? [];
+    const output = responseParts
+      .filter((p) => p && typeof p.text === "string" && (p as { thought?: boolean }).thought !== true)
+      .map((p) => p.text ?? "")
+      .join("")
+      .trim();
+
+    if (!output) {
+      const thought = responseParts.filter((p) => (p as { thought?: boolean }).thought === true).map((p) => p.text ?? "").join(" ").trim();
+      throw new OpenAIAnalysisError(
+        `Gemini не повернув фінальну відповідь (finishReason=${finishReason ?? "unknown"}${thought ? `, thought="${thought.slice(0, 200)}"` : ""}).`,
+      );
+    }
+    const parsed = parseStructuredOutput(output);
+    return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
   }
 
-  const candidate = payload.candidates?.[0];
-  const finishReason = candidate?.finishReason;
-  console.log(`[gemini:${analysisId}] ✓ ${response.status} finishReason=${finishReason ?? "?"} duration=${durationMs}ms`);
-  if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
-    console.error(`[gemini:${analysisId}]   unexpected finishReason=${finishReason} model=${model}`);
-  }
-
-  pushDebugEntry(debugEntry);
-
-  const responseParts = candidate?.content?.parts ?? [];
-  const output = responseParts
-    .filter((p) => p && typeof p.text === "string" && (p as { thought?: boolean }).thought !== true)
-    .map((p) => p.text ?? "")
-    .join("")
-    .trim();
-  if (!output) {
-    const thought = responseParts.filter((p) => (p as { thought?: boolean }).thought === true).map((p) => p.text ?? "").join(" ").trim();
-    throw new OpenAIAnalysisError(
-      `Gemini не повернув фінальну відповідь (finishReason=${finishReason ?? "unknown"}${thought ? `, thought="${thought.slice(0, 200)}"` : ""}).`,
-    );
-  }
-  const parsed = parseStructuredOutput(output);
-  return finalizeAnalysis({ analysis, company, parsed, model, usage: normalizeGeminiUsage(payload, model), tier });
+  throw lastError ?? new OpenAIAnalysisError("Всі доступні моделі Gemini вичерпали квоту. Спробуйте через хвилину.");
 }
 
 function parseStructuredOutput(raw: string): EnhancedTenderPayload {
