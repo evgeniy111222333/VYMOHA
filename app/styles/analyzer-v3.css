@@ -128,7 +128,8 @@
 /* Required Documents Checklist Panel */
 .required-checklist-panel { margin: 0 0 28px; padding: 26px; border: 1px solid #cfc7b8; border-radius: 14px; background: #f8f5ec; box-shadow: 6px 6px 0 var(--violet); }
 .required-checklist__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 20px; }
-.required-checklist__kicker { display: inline-flex; align-items: center; gap: 6px; font: 700 11px var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: #3d8d5d; margin-bottom: 4px; }
+.required-checklist__kicker { display: inline-flex; align-items: center; gap: 6px; font: 700 11px/1 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: #3d8d5d; margin-bottom: 6px; }
+.required-checklist__kicker svg { flex: 0 0 auto; display: block; position: relative; top: -0.5px; }
 .required-checklist__title-group h3 { margin: 4px 0; font-size: 20px; font-weight: 700; color: #171a17; letter-spacing: -0.01em; }
 .required-checklist__subtitle { margin: 0; color: #6b7267; font-size: 12px; line-height: 1.4; }
 .required-checklist__progress { width: 220px; flex: 0 0 auto; }
