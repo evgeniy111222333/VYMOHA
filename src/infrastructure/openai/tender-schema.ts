@@ -1,4 +1,4 @@
-import type { TenderRequirement, TenderRisk, Verdict } from "@/src/domain/tender/types";
+import type { RequiredDocumentItem, TenderRequirement, TenderRisk, Verdict } from "@/src/domain/tender/types";
 
 export type EnhancedTenderPayload = {
   summary: string;
@@ -10,6 +10,7 @@ export type EnhancedTenderPayload = {
   nextActions: string[];
   questionsToBuyer: string[];
   documentCoverage: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
+  requiredDocumentsChecklist?: RequiredDocumentItem[];
 };
 
 const evidenceSchema = {
@@ -23,10 +24,24 @@ const evidenceSchema = {
   },
 };
 
+const requiredDocumentItemSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "category", "title", "description", "note", "requiredType"],
+  properties: {
+    id: { type: "string" },
+    category: { type: "string", enum: ["statutory", "qualification", "technical", "financial", "other"] },
+    title: { type: "string" },
+    description: { type: "string" },
+    note: { type: "string" },
+    requiredType: { type: "string", enum: ["document", "statement", "either"] },
+  },
+};
+
 export const TENDER_ANALYSIS_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["summary", "score", "confidence", "verdict", "requirements", "risks", "nextActions", "questionsToBuyer", "documentCoverage"],
+  required: ["summary", "score", "confidence", "verdict", "requirements", "risks", "nextActions", "questionsToBuyer", "documentCoverage", "requiredDocumentsChecklist"],
   properties: {
     summary: { type: "string" },
     score: { type: "integer", minimum: 0, maximum: 100 },
@@ -69,6 +84,11 @@ export const TENDER_ANALYSIS_SCHEMA = {
           title: { type: "string" }, status: { type: "string", enum: ["read", "partial", "unavailable"] }, notes: { type: "string" },
         },
       },
+    },
+    requiredDocumentsChecklist: {
+      type: "array",
+      maxItems: 24,
+      items: requiredDocumentItemSchema,
     },
   },
 } as const;

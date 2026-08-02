@@ -30,6 +30,7 @@ describe("Gemini enhancer DOCX handling", () => {
           nextActions: ["Провести зустріч з замовником"],
           questionsToBuyer: [],
           documentCoverage: [],
+          requiredDocumentsChecklist: [{ id: "doc-1", category: "statutory", title: "Довідка ДПС", description: "Податковий стан", note: "ДПС", requiredType: "document" }],
         };
         return new Response(
           JSON.stringify({

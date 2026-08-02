@@ -24,6 +24,7 @@ describe("OpenAI tender enhancer", () => {
         nextActions: ["Додати профіль компанії"],
         questionsToBuyer: ["Чи приймається суміжний CPV?"],
         documentCoverage: [{ title: "Тендерна документація.pdf", status: "read", notes: "Прочитано повністю" }],
+        requiredDocumentsChecklist: [{ id: "doc-1", category: "statutory", title: "Довідка МВС", description: "Відсутність судимості", note: "Орган: МВС", requiredType: "document" }],
       };
       return new Response(JSON.stringify({
         output: [{ content: [{ type: "output_text", text: JSON.stringify(output) }] }],

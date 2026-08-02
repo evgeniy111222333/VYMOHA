@@ -8,6 +8,8 @@ import { BuyerContextCard } from "./BuyerContextCard";
 import { ScoreExplanation } from "./ScoreExplanation";
 import { TenderDocumentList } from "./TenderDocumentList";
 
+import { RequiredDocumentsChecklist } from "./RequiredDocumentsChecklist";
+
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
 
@@ -60,6 +62,10 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         analyzeHref={analyzeHref}
         billingHref={billingHref}
       />}
+
+      {analysis.requiredDocumentsChecklist && analysis.requiredDocumentsChecklist.length > 0 && (
+        <RequiredDocumentsChecklist items={analysis.requiredDocumentsChecklist} />
+      )}
 
       <TenderDocumentList analysis={analysis} />
 

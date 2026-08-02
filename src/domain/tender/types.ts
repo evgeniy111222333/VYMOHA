@@ -77,6 +77,17 @@ export type NormalizedTender = {
   itemCount: number;
 };
 
+export type RequiredDocumentCategory = "statutory" | "qualification" | "technical" | "financial" | "other";
+
+export type RequiredDocumentItem = {
+  id: string;
+  category: RequiredDocumentCategory;
+  title: string;
+  description: string;
+  note?: string;
+  requiredType?: "document" | "statement" | "either";
+};
+
 export type CompanyProfile = {
   name?: string;
   edrpou?: string;
@@ -102,6 +113,7 @@ export type TenderAnalysis = {
   nextActions: string[];
   questionsToBuyer?: string[];
   documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
+  requiredDocumentsChecklist?: RequiredDocumentItem[];
   creditsCharged?: number;
   disclaimer: string;
 };

@@ -518,6 +518,9 @@ function finalizeAnalysis(input: {
       nextActions: parsed.nextActions.slice(0, 8),
       questionsToBuyer: parsed.questionsToBuyer.slice(0, 8),
       documentCoverage: parsed.documentCoverage.slice(0, 16),
+      requiredDocumentsChecklist: Array.isArray(parsed.requiredDocumentsChecklist)
+        ? parsed.requiredDocumentsChecklist.slice(0, 24)
+        : undefined,
       mode: "ai-enhanced",
       analysisTier: tier,
     },
