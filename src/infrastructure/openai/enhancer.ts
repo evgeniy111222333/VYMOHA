@@ -541,7 +541,9 @@ function finalizeAnalysis(input: {
         kind: "base",
       }],
       verdict,
-      summary: parsed.summary.slice(0, 900),
+      summary: parsed.summary
+        .replace(/фінальний вердикт — ['"]?(?:maybe|go|no-go)['"]?/gi, `фінальний вердикт — '${verdict === "no-go" ? "не заходити" : verdict === "go" ? "можна заходити" : "потрібна перевірка"}'`)
+        .slice(0, 900),
       requirements: parsed.requirements.slice(0, 32).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),
       risks: parsed.risks.slice(0, 20).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),
       nextActions: parsed.nextActions.slice(0, 8),
