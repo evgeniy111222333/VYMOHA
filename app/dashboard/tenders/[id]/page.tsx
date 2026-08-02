@@ -49,13 +49,6 @@ export default async function SavedTenderReportPage({ params }: { params: Promis
       </header>
 
       <AnalysisResult analysis={analysis} signedIn={true} />
-
-      <div className="analysis-context-grid">
-        <ScoreExplanation analysis={analysis} />
-        {analysis.buyerContext && <BuyerContextCard context={analysis.buyerContext} />}
-      </div>
-
-      <TenderDocumentList analysis={analysis} />
     </div>
   );
 }
