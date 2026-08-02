@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, FileCheck, FileText, Info, Layers, ShieldCheck, Square } from "lucide-react";
+import { CheckSquare, ExternalLink, FileCheck, FileText, Info, Layers, Quote, Search, ShieldCheck, Square } from "lucide-react";
 import type { RequiredDocumentCategory, RequiredDocumentItem } from "@/src/domain/tender/types";
 
 const categoryLabels: Record<RequiredDocumentCategory, { label: string; icon: typeof FileText }> = {
@@ -40,9 +40,10 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
   return (
     <section className="required-checklist-panel">
       <div className="required-checklist__head">
-        <div>
+        <div className="required-checklist__title-group">
           <span className="section-kicker"><CheckSquare size={14} /> Конструктор пакета документів</span>
-          <h3>Чек-лист для подання пропозиції ({totalCount} пунктів)</h3>
+          <h3>Чек-лист подання пропозиції ({totalCount} пунктів)</h3>
+          <p className="required-checklist__subtitle">Кожен пункт підтверджено цитатою з тендерної документації або законодавства</p>
         </div>
         <div className="required-checklist__progress">
           <div className="required-checklist__progress-text">
@@ -86,26 +87,28 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
           const Icon = catInfo.icon;
 
           return (
-            <div
+            <article
               key={item.id}
               className={`required-checklist-card ${isDone ? "is-done" : ""}`}
-              onClick={() => toggleCheck(item.id)}
-              role="checkbox"
-              aria-checked={isDone}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === " " || e.key === "Enter") {
-                  e.preventDefault();
-                  toggleCheck(item.id);
-                }
-              }}
             >
-              <div className="required-checklist-card__check">
-                {isDone ? <CheckSquare size={20} className="icon-done" /> : <Square size={20} className="icon-pending" />}
-              </div>
+              <div className="required-checklist-card__header">
+                <div
+                  className="required-checklist-card__check-toggle"
+                  onClick={() => toggleCheck(item.id)}
+                  role="checkbox"
+                  aria-checked={isDone}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      toggleCheck(item.id);
+                    }
+                  }}
+                >
+                  {isDone ? <CheckSquare size={20} className="icon-done" /> : <Square size={20} className="icon-pending" />}
+                </div>
 
-              <div className="required-checklist-card__content">
-                <div className="required-checklist-card__top">
+                <div className="required-checklist-card__meta">
                   <span className="required-checklist-card__cat">
                     <Icon size={12} /> {catInfo.label}
                   </span>
@@ -115,8 +118,10 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
                     </span>
                   )}
                 </div>
+              </div>
 
-                <h4>{item.title}</h4>
+              <div className="required-checklist-card__body">
+                <h4 onClick={() => toggleCheck(item.id)}>{item.title}</h4>
                 <p>{item.description}</p>
 
                 {item.note && (
@@ -126,7 +131,28 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
                   </div>
                 )}
               </div>
-            </div>
+
+              {item.evidence && (
+                <div className="required-checklist-card__evidence">
+                  <div className="required-checklist-card__evidence-header">
+                    <span className="required-checklist-card__evidence-source">
+                      <Search size={11} /> <strong>Джерело:</strong> {item.evidence.label}
+                    </span>
+                    {item.evidence.source && (
+                      <a href={item.evidence.source} target="_blank" rel="noreferrer" title="Перейти до джерела у Prozorro">
+                        Prozorro <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
+                  {item.evidence.excerpt && (
+                    <div className="required-checklist-card__quote" title="Точна цитата з файлу ТД для пошуку через Ctrl+F">
+                      <Quote size={12} />
+                      <q>{item.evidence.excerpt}</q>
+                    </div>
+                  )}
+                </div>
+              )}
+            </article>
           );
         })}
       </div>

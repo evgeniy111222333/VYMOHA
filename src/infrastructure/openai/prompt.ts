@@ -28,7 +28,7 @@ export function buildTenderPrompt(analysis: TenderAnalysis, company?: CompanyPro
 5) питання, які варто поставити замовнику до дедлайну.
 
 Правила якості:
-- requiredDocumentsChecklist має містити вичерпний список файлів і довідок для подачі: category (statutory|qualification|technical|financial|other), title (точна назва), description (умови розробки), note (підказка про орган чи форму), requiredType (document|statement|either);
+- requiredDocumentsChecklist має містити вичерпний список файлів і довідок для подачі: category (statutory|qualification|technical|financial|other), title (точна назва), description (умови розробки), note (підказка про орган чи форму), requiredType (document|statement|either), та обов'язково evidence: { label (назва файлу або Постанова №1178), source (${tender.sourceUrl}), excerpt (ТОЧНА ЦИТАТА-ДОКАЗ із файлу ТД українською мовою, щоб користувач міг знайти її через Ctrl+F) };
 - не вигадуй сторінки, цитати, вимоги чи відповідність;
 - кожен ризик і вимога повинні містити evidence з назвою файлу/розділу та коротким точним excerpt;
 - якщо доказу немає, status=unknown або review, а не met;

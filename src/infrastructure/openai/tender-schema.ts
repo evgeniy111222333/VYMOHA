@@ -27,7 +27,7 @@ const evidenceSchema = {
 const requiredDocumentItemSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["id", "category", "title", "description", "note", "requiredType"],
+  required: ["id", "category", "title", "description", "note", "requiredType", "evidence"],
   properties: {
     id: { type: "string" },
     category: { type: "string", enum: ["statutory", "qualification", "technical", "financial", "other"] },
@@ -35,6 +35,7 @@ const requiredDocumentItemSchema = {
     description: { type: "string" },
     note: { type: "string" },
     requiredType: { type: "string", enum: ["document", "statement", "either"] },
+    evidence: evidenceSchema,
   },
 };
 

@@ -86,6 +86,7 @@ export type RequiredDocumentItem = {
   description: string;
   note?: string;
   requiredType?: "document" | "statement" | "either";
+  evidence?: Evidence;
 };
 
 export type CompanyProfile = {
