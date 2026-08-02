@@ -10,6 +10,8 @@ import { TenderDocumentList } from "./TenderDocumentList";
 
 import { RequiredDocumentsChecklist } from "./RequiredDocumentsChecklist";
 
+import { ScoreGauge } from "./ScoreGauge";
+
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
 
@@ -37,8 +39,6 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
     else window.location.href = "/dashboard";
   }
 
-  const scoreColor = analysis.verdict === "go" ? "#65bc8c" : analysis.verdict === "maybe" ? "#eab308" : "#df7568";
-
   return (
     <section className="analysis-result" id="analysis-result" aria-live="polite">
       <div className="analysis-result__head">
@@ -46,16 +46,7 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         <a href={analysis.tender.sourceUrl} target="_blank" rel="noreferrer">Відкрити в Prozorro <ExternalLink size={14} /></a>
       </div>
       <div className="analysis-summary">
-        <div
-          className={`analysis-score analysis-score--${analysis.verdict}`}
-          style={{
-            "--score-angle": `${Math.max(0, Math.min(100, analysis.score)) * 3.6}deg`,
-            "--score-color": scoreColor,
-          } as React.CSSProperties}
-        >
-          <strong>{analysis.score}</strong>
-          <span>/100</span>
-        </div>
+        <ScoreGauge score={analysis.score} verdict={analysis.verdict} />
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
         <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Покриття даних</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Швидка перевірка"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}</div>
       </div>

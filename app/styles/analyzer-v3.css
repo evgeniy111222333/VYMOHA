@@ -23,6 +23,17 @@
 .analysis-result__head > a { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; background: rgba(91, 74, 255, 0.08); color: #5b4aff; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: background .15s ease; }
 .analysis-result__head > a:hover { background: rgba(91, 74, 255, 0.16); }
 .analysis-summary { border-radius: 10px; background: var(--night); }.analysis-summary h3 { color: var(--signal); }.analysis-summary__facts b { display: inline-flex; align-items: center; gap: 5px; }
+
+/* SVG Score Gauge */
+.score-gauge { position: relative; width: 80px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 0 0 auto; transition: transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), filter .25s ease; filter: drop-shadow(0 0 6px rgba(0,0,0,0.3)); cursor: pointer; user-select: none; }
+.score-gauge:hover { transform: scale(1.08); filter: drop-shadow(0 0 16px var(--glow-color, rgba(251, 191, 36, 0.4))); }
+.score-gauge__svg { width: 100%; height: 100%; }
+.score-gauge__track { fill: none; stroke: #2a2d29; }
+.score-gauge__fill { fill: none; transition: stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.score-gauge__text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.score-gauge__text strong { font-size: 24px; font-weight: 800; line-height: 1; color: #f4f1e8; transition: transform .2s ease; }
+.score-gauge:hover .score-gauge__text strong { transform: scale(1.1); }
+.score-gauge__text span { font-size: 9px; color: #9da298; font-family: var(--font-mono), monospace; margin-top: 1px; }
 .analysis-context-grid { margin: 0 0 18px; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 14px; align-items: stretch; }
 .score-explanation, .buyer-context, .tender-documents { border: 1px solid #cfc7b8; border-radius: 10px; background: #f8f5ec; }
 .score-explanation { overflow: hidden; }
