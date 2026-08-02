@@ -342,7 +342,13 @@ async function callGemini(input: {
     }
   });
 
-  const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash"];
+  const DEFAULT_GEMINI_FALLBACKS = [
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-2.0-flash",
+  ];
   const modelsToTry: string[] = [model];
   for (const m of DEFAULT_GEMINI_FALLBACKS) {
     if (!modelsToTry.includes(m)) modelsToTry.push(m);
