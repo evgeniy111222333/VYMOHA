@@ -3,7 +3,7 @@
 .analyzer__control { padding: 8px; grid-template-columns: auto 1fr auto; align-items: center; border: 2px solid var(--night); border-radius: 11px; background: #f7f3e8; box-shadow: 10px 10px 0 rgba(9,11,9,.18); }
 .analyzer__prompt { padding-left: 12px; color: #5b4aff; font: 700 13px var(--font-mono), monospace; }
 .analyzer__control input { height: 58px; font: 500 14px var(--font-mono), monospace; }
-.analyzer__control .button { min-height: 54px; box-shadow: none; }
+.analyzer__control .button { min-height: 54px; min-width: 230px; box-shadow: none; }
 .analyzer__below { padding-top: 13px; color: rgba(9,11,9,.58); font: 500 9px var(--font-mono), monospace; }
 .analysis-tier-grid { margin-bottom: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .analysis-tier { min-height: 128px; padding: 17px; position: relative; text-align: left; color: #999d95; border: 1px solid #333831; border-radius: 10px; background: #131613; cursor: pointer; transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease; }

@@ -66,7 +66,7 @@ export function AnalyzerForm({
       {allowDeepAnalysis && <div className="analysis-tier-grid" role="radiogroup" aria-label="Глибина аналізу">
         {(Object.keys(ANALYSIS_TIERS) as AnalysisTier[]).map((id) => {
           const config = ANALYSIS_TIERS[id]; const Icon = tierIcons[id];
-          return <button type="button" role="radio" aria-checked={tier === id} className={tier === id ? "analysis-tier is-active" : "analysis-tier"} key={id} onClick={() => setTier(id)}>
+          return <button type="button" role="radio" aria-checked={tier === id} disabled={loading} className={tier === id ? "analysis-tier is-active" : "analysis-tier"} key={id} onClick={() => setTier(id)}>
             <span><Icon size={18} /><b>{config.label}</b></span><p>{config.detail}</p><small>{tierPriceLabel(config.credits)}</small>
           </button>;
         })}
@@ -81,6 +81,7 @@ export function AnalyzerForm({
           <span className="analyzer__prompt" aria-hidden="true">UA/</span>
           <input
             id={`tender-source-${variant}`} value={source} onChange={(event) => setSource(event.target.value)}
+            disabled={loading}
             placeholder="UA-2026-08-01-000507-a" autoComplete="off" spellCheck={false} required minLength={10} maxLength={300}
             aria-describedby={`tender-hint-${variant}`}
           />

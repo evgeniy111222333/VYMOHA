@@ -39,11 +39,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand__mark i:nth-child(2) { width: 72%; }
 .brand__mark i:nth-child(3) { width: 45%; }
 .button { min-height: 48px; padding: 0 20px; border: 1px solid transparent; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-weight: 690; font-size: 14px; cursor: pointer; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
-.button:hover { transform: translateY(-1px); }
+.button:hover:not(:disabled) { transform: translateY(-1px); }
 .button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible { outline: 3px solid rgba(20, 91, 61, .25); outline-offset: 3px; }
-.button:disabled { opacity: .62; cursor: wait; transform: none; }
+.button:disabled { opacity: .65; cursor: wait !important; pointer-events: none !important; transform: none !important; box-shadow: none !important; }
 .button--primary { background: var(--forest); color: white; box-shadow: 0 9px 24px rgba(20,91,61,.18); }
-.button--primary:hover { background: var(--forest-dark); }
+.button--primary:hover:not(:disabled) { background: var(--forest-dark); }
 .button--dark { background: var(--ink); color: var(--paper); }
 .button--ghost { border-color: var(--line); background: transparent; }
 .button--outline { border-color: var(--ink); background: transparent; width: 100%; }
