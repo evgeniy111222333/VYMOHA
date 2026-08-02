@@ -1,3 +1,4 @@
+import zlib from "node:zlib";
 import type { AnalysisTier } from "@/src/domain/billing/packages";
 import { estimateOpenAICostMicrousd } from "@/src/domain/billing/cost";
 import type { CompanyProfile, TenderAnalysis } from "@/src/domain/tender/types";
@@ -102,7 +103,6 @@ function getGeminiThinkingConfig(model: string, expert: boolean): Record<string,
   if (/^gemini-3(\.|-|$)/.test(normalized)) {
     return { thinkingConfig: { thinkingLevel: expert ? "HIGH" : "MINIMAL" } };
   }
-  // Gemini 2.5 і старіші
   return {
     thinkingConfig: {
       thinkingBudget: expert ? -1 : 0,
@@ -111,12 +111,56 @@ function getGeminiThinkingConfig(model: string, expert: boolean): Record<string,
   };
 }
 
-const MAX_INLINE_FILE_BYTES = 8 * 1024 * 1024; // 8 MB safety margin for Gemini inline_data
+const MAX_INLINE_FILE_BYTES = 8 * 1024 * 1024; // 8 MB safety margin for Gemini
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
+const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04]; // PK.. (DOCX)
 
-type DownloadResult = { mimeType: string; data: string; byteLength: number } | null;
+type ProcessedDocument =
+  | { kind: "pdf"; mimeType: "application/pdf"; data: string; byteLength: number }
+  | { kind: "text"; mimeType: "text/plain"; text: string; byteLength: number }
+  | null;
 
-async function downloadAsInlineData(url: string): Promise<DownloadResult> {
+function extractTextFromDocx(buffer: ArrayBuffer): string | null {
+  try {
+    const bytes = new Uint8Array(buffer);
+    let offset = 0;
+    while (offset < bytes.length - 30) {
+      if (bytes[offset] === 0x50 && bytes[offset + 1] === 0x4b && bytes[offset + 2] === 0x03 && bytes[offset + 3] === 0x04) {
+        const compression = bytes[offset + 8] | (bytes[offset + 9] << 8);
+        const compressedSize = bytes[offset + 18] | (bytes[offset + 19] << 8) | (bytes[offset + 20] << 16) | (bytes[offset + 21] << 24);
+        const fileNameLen = bytes[offset + 26] | (bytes[offset + 27] << 8);
+        const extraLen = bytes[offset + 28] | (bytes[offset + 29] << 8);
+        const fileNameBytes = bytes.subarray(offset + 30, offset + 30 + fileNameLen);
+        const fileName = new TextDecoder().decode(fileNameBytes);
+        const dataOffset = offset + 30 + fileNameLen + extraLen;
+
+        if (fileName === "word/document.xml") {
+          const compressedData = bytes.subarray(dataOffset, dataOffset + compressedSize);
+          let xmlText = "";
+          if (compression === 8) {
+            const decompressed = zlib.inflateRawSync(compressedData);
+            xmlText = new TextDecoder().decode(decompressed);
+          } else if (compression === 0) {
+            xmlText = new TextDecoder().decode(compressedData);
+          }
+          const text = xmlText
+            .replace(/<w:p[^>]*>/g, "\n")
+            .replace(/<[^>]+>/g, "")
+            .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+          return text.trim();
+        }
+        offset = dataOffset + compressedSize;
+      } else {
+        offset++;
+      }
+    }
+  } catch (err) {
+    console.warn("[docx] Failed to extract text:", err);
+  }
+  return null;
+}
+
+async function downloadGeminiDocument(url: string, title: string): Promise<ProcessedDocument> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
     if (!res.ok) {
@@ -128,21 +172,55 @@ async function downloadAsInlineData(url: string): Promise<DownloadResult> {
       console.warn(`[download] SKIPPED size=${buf.byteLength} url=${url}`);
       return null;
     }
-    // Перевіряємо magic bytes — Prozorro часто віддає .docx/.xlsx з Content-Type application/pdf,
-    // і тоді Gemini reject-ить з "The document has no pages". Беремо тільки справжні PDF.
-    const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, PDF_MAGIC.length));
-    const isPdf = head.length === PDF_MAGIC.length && PDF_MAGIC.every((b, i) => b === head[i]);
-    if (!isPdf) {
-      console.log(`[download] NOT_PDF size=${buf.byteLength} url=${url} — пропущено`);
+
+    const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, 5));
+    const isPdf = head.length >= 5 && PDF_MAGIC.every((b, i) => b === head[i]);
+    const isZip = head.length >= 4 && ZIP_MAGIC.every((b, i) => b === head[i]);
+
+    if (isPdf) {
+      console.log(`[download] PDF OK size=${buf.byteLength} url=${url}`);
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      return {
+        kind: "pdf",
+        mimeType: "application/pdf",
+        data: typeof btoa === "function" ? btoa(binary) : Buffer.from(bytes).toString("base64"),
+        byteLength: buf.byteLength,
+      };
+    }
+
+    if (isZip || title.toLowerCase().endsWith(".docx")) {
+      const extractedText = extractTextFromDocx(buf);
+      if (extractedText && extractedText.length > 0) {
+        console.log(`[download] DOCX OK extracted ${extractedText.length} chars size=${buf.byteLength} url=${url}`);
+        return {
+          kind: "text",
+          mimeType: "text/plain",
+          text: extractedText,
+          byteLength: buf.byteLength,
+        };
+      }
+      console.warn(`[download] DOCX text extraction yielded empty string for url=${url}`);
       return null;
     }
-    let binary = "";
-    const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+
+    // Try text decoding for text/csv files
+    const text = new TextDecoder("utf-8", { fatal: false }).decode(buf).trim();
+    if (text.length > 0 && !/[\x00-\x08\x0E-\x1F]/.test(text.slice(0, 200))) {
+      console.log(`[download] TEXT OK length=${text.length} size=${buf.byteLength} url=${url}`);
+      return {
+        kind: "text",
+        mimeType: "text/plain",
+        text,
+        byteLength: buf.byteLength,
+      };
     }
-    console.log(`[download] OK size=${buf.byteLength} mime=application/pdf url=${url}`);
-    return { mimeType: "application/pdf", data: typeof btoa === "function" ? btoa(binary) : Buffer.from(bytes).toString("base64"), byteLength: buf.byteLength };
+
+    console.warn(`[download] UNKNOWN_FORMAT size=${buf.byteLength} url=${url}`);
+    return null;
   } catch (err) {
     console.warn(`[download] ERROR url=${url}`, err);
     return null;
@@ -231,18 +309,16 @@ async function callGemini(input: {
   const analysisId = analysis.id ?? "unknown";
   const startTime = Date.now();
 
-  // ─── Logging: files being downloaded ───────────────────────────────────────
   console.log(`[gemini:${analysisId}] ▶ Starting analysis model=${model} tier=${tier} expert=${expert} files=${files.length}`);
   files.forEach((f, i) => console.log(`[gemini:${analysisId}]   file[${i}] title="${f.title}" format=${f.format ?? "?"} url=${f.url ?? "none"}`));
 
-  const inlineFiles = await Promise.all(files.map(async (document) => {
+  const processedFiles = await Promise.all(files.map(async (document) => {
     if (!document.url) return null;
-    return downloadAsInlineData(document.url);
+    return downloadGeminiDocument(document.url, document.title);
   }));
 
-  // ─── Logging: download results ─────────────────────────────────────────────
   const fileDebugInfo = files.map((f, i) => {
-    const dl = inlineFiles[i];
+    const dl = processedFiles[i];
     return {
       title: f.title,
       url: f.url,
@@ -252,18 +328,18 @@ async function callGemini(input: {
       downloadOk: dl !== null,
     };
   });
-  const downloadedCount = inlineFiles.filter(Boolean).length;
+  const downloadedCount = processedFiles.filter(Boolean).length;
   console.log(`[gemini:${analysisId}]   downloaded ${downloadedCount}/${files.length} files`);
-  fileDebugInfo.forEach((f, i) => {
-    if (!f.downloadOk) console.warn(`[gemini:${analysisId}]   ✗ file[${i}] "${f.title}" FAILED to download`);
-    else console.log(`[gemini:${analysisId}]   ✓ file[${i}] "${f.title}" ${f.downloadedBytes} bytes mime=${f.mimeType}`);
-  });
 
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
-  inlineFiles.forEach((file, index) => {
+  processedFiles.forEach((file, index) => {
     if (!file) return;
-    parts.push({ inline_data: { mime_type: file.mimeType, data: file.data } });
-    parts.push({ text: `Документ ${index + 1} (${files[index]?.title}) завантажено вище. Використай його під час аналізу.` });
+    if (file.kind === "pdf") {
+      parts.push({ inline_data: { mime_type: file.mimeType, data: file.data } });
+      parts.push({ text: `Документ ${index + 1} (${files[index]?.title}) завантажено як PDF вище.` });
+    } else if (file.kind === "text") {
+      parts.push({ text: `\n\n--- Документ ${index + 1} (${files[index]?.title}) ---\n${file.text.slice(0, 40_000)}\n--- Кінець документа ${index + 1} ---` });
+    }
   });
 
   const body = {
