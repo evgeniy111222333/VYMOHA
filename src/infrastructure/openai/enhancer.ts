@@ -101,7 +101,7 @@ function toGeminiSchema(schema: Record<string, unknown>): Record<string, unknown
 function getGeminiThinkingConfig(model: string, expert: boolean): Record<string, unknown> {
   const normalized = model.toLowerCase();
   if (/^gemini-3(\.|-|$)/.test(normalized)) {
-    return { thinkingConfig: { thinkingLevel: expert ? "HIGH" : "MINIMAL" } };
+    return { thinkingConfig: { thinkingLevel: expert ? "MEDIUM" : "MINIMAL" } };
   }
   return {
     thinkingConfig: {
@@ -363,7 +363,7 @@ async function callGemini(input: {
       generationConfig: {
         response_mime_type: "application/json",
         response_schema: toGeminiSchema(TENDER_ANALYSIS_SCHEMA as Record<string, unknown>),
-        max_output_tokens: expert ? 9_000 : 6_000,
+        max_output_tokens: expert ? 16_384 : 8_192,
         temperature: expert ? 0.4 : 0.2,
         ...getGeminiThinkingConfig(currentModel, expert),
       },
@@ -446,12 +446,28 @@ async function callGemini(input: {
 
     if (!output) {
       const thought = responseParts.filter((p) => (p as { thought?: boolean }).thought === true).map((p) => p.text ?? "").join(" ").trim();
-      throw new OpenAIAnalysisError(
+      lastError = new OpenAIAnalysisError(
         `Gemini не повернув фінальну відповідь (finishReason=${finishReason ?? "unknown"}${thought ? `, thought="${thought.slice(0, 200)}"` : ""}).`,
       );
+      if (modelIndex < modelsToTry.length - 1) {
+        console.warn(`[gemini:${analysisId}] ⚠️ Output empty or thinking truncated on model=${currentModel}. Retrying with next model=${modelsToTry[modelIndex + 1]}...`);
+        continue;
+      }
+      throw lastError;
     }
-    const parsed = parseStructuredOutput(output);
-    return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
+
+    try {
+      const parsed = parseStructuredOutput(output);
+      return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
+    } catch (parseErr) {
+      console.warn(`[gemini:${analysisId}] ⚠️ JSON parse error on model=${currentModel} finishReason=${finishReason}:`, parseErr);
+      lastError = parseErr instanceof Error ? parseErr : new Error(String(parseErr));
+      if (modelIndex < modelsToTry.length - 1) {
+        console.warn(`[gemini:${analysisId}] ⚠️ Retrying with fallback model=${modelsToTry[modelIndex + 1]} due to truncated JSON...`);
+        continue;
+      }
+      throw lastError;
+    }
   }
 
   throw lastError ?? new OpenAIAnalysisError("Технічна проблема з AI-сервісом. Спробуйте пізніше.");
