@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { ArrowRight, BrainCircuit, Coins, FileCheck2, Gauge, LoaderCircle, LockKeyhole, ScanSearch } from "lucide-react";
 import { ANALYSIS_TIERS, type AnalysisTier } from "@/src/domain/billing/packages";
-import { formatSignals } from "@/src/domain/billing/presentation";
+import { formatSignals, SIGNAL_UNIT_SHORT } from "@/src/domain/billing/presentation";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { AnalysisResult } from "./AnalysisResult";
 
 type AnalyzerFormProps = {
   variant?: "embedded" | "page";
   defaultValue?: string;
+  defaultTier?: AnalysisTier;
   allowDeepAnalysis?: boolean;
   signedIn?: boolean;
   initialCredits?: number;
@@ -18,11 +19,16 @@ type AnalyzerFormProps = {
 
 const tierIcons = { quick: Gauge, deep: ScanSearch, expert: BrainCircuit };
 
+function tierPriceLabel(credits: number): string {
+  if (credits === 0) return `0 ${SIGNAL_UNIT_SHORT} · базова`;
+  return formatSignals(credits, true);
+}
+
 export function AnalyzerForm({
-  variant = "page", defaultValue = "", allowDeepAnalysis = false, signedIn = false, initialCredits = 0, signInHref = "/dashboard",
+  variant = "page", defaultValue = "", defaultTier, allowDeepAnalysis = false, signedIn = false, initialCredits = 0, signInHref = "/dashboard",
 }: AnalyzerFormProps) {
   const [source, setSource] = useState(defaultValue);
-  const [tier, setTier] = useState<AnalysisTier>("quick");
+  const [tier, setTier] = useState<AnalysisTier>(defaultTier ?? "quick");
   const [balance, setBalance] = useState(initialCredits);
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +59,7 @@ export function AnalyzerForm({
     ? "Максимальна глибина · до 8 документів"
     : tier === "deep"
       ? "Документи й таблиці · до 5 файлів"
-      : "Ключові дані закупівлі · швидкий відбір";
+      : "Структура закупівлі · базовий висновок";
 
   return (
     <div className={`analyzer ${variant === "embedded" ? "analyzer--embedded" : "analyzer--page"}`}>
@@ -61,7 +67,7 @@ export function AnalyzerForm({
         {(Object.keys(ANALYSIS_TIERS) as AnalysisTier[]).map((id) => {
           const config = ANALYSIS_TIERS[id]; const Icon = tierIcons[id];
           return <button type="button" role="radio" aria-checked={tier === id} className={tier === id ? "analysis-tier is-active" : "analysis-tier"} key={id} onClick={() => setTier(id)}>
-            <span><Icon size={18} /><b>{config.label}</b></span><p>{config.detail}</p><small>{config.credits ? formatSignals(config.credits, true) : "безплатно"}</small>
+            <span><Icon size={18} /><b>{config.label}</b></span><p>{config.detail}</p><small>{tierPriceLabel(config.credits)}</small>
           </button>;
         })}
       </div>}
@@ -88,7 +94,12 @@ export function AnalyzerForm({
         </div>
         {error && <div className="form-error" role="alert">{error}</div>}
       </form>
-      {analysis && <AnalysisResult analysis={analysis} />}
+      {analysis && <AnalysisResult
+        analysis={analysis}
+        signedIn={signedIn}
+        initialCredits={balance}
+        signInHref={signInHref}
+      />}
     </div>
   );
 }

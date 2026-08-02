@@ -3,10 +3,18 @@ import type { BuyerContext, CompanyProfile, NormalizedTender, TenderAnalysis, Te
 
 const formatter = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 2 });
 
-export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile, now = new Date(), buyerContext?: BuyerContext): TenderAnalysis {
+export type AnalysisMode = "quick" | "deep" | "expert";
+
+export function analyzeTender(
+  tender: NormalizedTender,
+  company?: CompanyProfile,
+  now = new Date(),
+  buyerContext?: BuyerContext,
+  mode: AnalysisMode = "quick",
+): TenderAnalysis {
   const score = scoreTender(tender, company, now, buyerContext);
   const requirements = buildRequirements(tender, company, now);
-  const risks = buildRisks(tender, company, now);
+  const risks = buildRisks(tender, company, now, mode);
   const missingCount = requirements.filter((item) => item.status === "missing").length;
   const reviewCount = requirements.filter((item) => item.status === "review").length;
 
@@ -18,18 +26,12 @@ export function analyzeTender(tender: NormalizedTender, company?: CompanyProfile
     confidence: score.confidence,
     scoreFactors: score.factors,
     buyerContext,
-    summary: score.verdict === "go"
-      ? `Закупівля виглядає перспективною. Перед поданням підтвердьте ${reviewCount} пунктів, які потребують ручної перевірки.`
-      : score.verdict === "maybe"
-        ? `Потенціал є, але рішення залежить від ${Math.max(1, missingCount + reviewCount)} відкритих вимог. Не формуйте пропозицію до їх перевірки.`
-        : isDeadlineClosed(tender, now)
-          ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
-          : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.",
+    summary: buildSummary(score.verdict, missingCount + reviewCount, tender, now, mode),
     generatedAt: now.toISOString(),
     mode: "structured",
     requirements,
     risks,
-    nextActions: buildNextActions(requirements, risks),
+    nextActions: buildNextActions(requirements, risks, mode),
     disclaimer: "Автоматичний аналіз є допоміжним інструментом і не замінює юридичну перевірку або рішення відповідальної особи.",
   };
 }
@@ -38,6 +40,17 @@ function isDeadlineClosed(tender: NormalizedTender, now: Date): boolean {
   if (!tender.deadline) return false;
   const deadline = new Date(tender.deadline);
   return Number.isFinite(deadline.getTime()) && deadline.getTime() < now.getTime();
+}
+
+function buildSummary(verdict: TenderAnalysis["verdict"], openCount: number, tender: NormalizedTender, now: Date, mode: AnalysisMode): string {
+  const suffix = mode === "quick"
+    ? " Повний аналіз доступний у платних рівнях — кнопка нижче."
+    : "";
+  if (verdict === "go") return `Закупівля виглядає перспективною. Перед поданням підтвердьте ${openCount} пунктів, які потребують ручної перевірки.${suffix}`;
+  if (verdict === "maybe") return `Потенціал є, але рішення залежить від ${Math.max(1, openCount)} відкритих вимог. Не формуйте пропозицію до їх перевірки.${suffix}`;
+  return isDeadlineClosed(tender, now)
+    ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
+    : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.";
 }
 
 function buildRequirements(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date): TenderRequirement[] {
@@ -103,7 +116,7 @@ function buildRequirements(tender: NormalizedTender, company: CompanyProfile | u
   return requirements;
 }
 
-function buildRisks(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date): TenderRisk[] {
+function buildRisks(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date, mode: AnalysisMode): TenderRisk[] {
   const risks: TenderRisk[] = [];
   const deadline = tender.deadline ? new Date(tender.deadline) : null;
   if (deadline) {
@@ -151,23 +164,25 @@ function buildRisks(tender: NormalizedTender, company: CompanyProfile | undefine
     });
   }
 
-  const tenderDocs = tender.documents.filter((document) => document.title !== "sign.p7s");
-  if (tenderDocs.length > 0) {
-    risks.push({
-      id: "document-review", title: "Файли ще потребують прочитання",
-      description: `Базовий режим знайшов ${formatFileCount(tenderDocs.length)}, але не робить висновків із повного тексту PDF та додатків.`, level: "medium",
-      mitigation: "Відкрийте файли вручну або запустіть поглиблений AI-аналіз після входу.",
-      evidence: { label: "Документи закупівлі", source: tender.sourceUrl },
-    });
-  }
+  if (mode === "quick") {
+    const tenderDocs = tender.documents.filter((document) => document.title !== "sign.p7s");
+    if (tenderDocs.length > 0) {
+      risks.push({
+        id: "document-review", title: "Файли ще потребують прочитання",
+        description: `Швидка перевірка знайшла ${formatFileCount(tenderDocs.length)}, але не робить висновків із повного тексту PDF та додатків.`, level: "medium",
+        mitigation: "Відкрийте файли вручну або запустіть поглиблений AI-аналіз.",
+        evidence: { label: "Документи закупівлі", source: tender.sourceUrl },
+      });
+    }
 
-  if (risks.length === 0) {
-    risks.push({
-      id: "manual-review", title: "Потрібна перевірка повного тексту",
-      description: "Структуровані дані не містять усіх формальних і технічних умов.", level: "low",
-      mitigation: "Відкрийте файли документації або ввімкніть поглиблений AI-аналіз.",
-      evidence: { label: "Дані Prozorro", source: tender.sourceUrl },
-    });
+    if (risks.length === 0) {
+      risks.push({
+        id: "manual-review", title: "Потрібна перевірка повного тексту",
+        description: "Структуровані дані не містять усіх формальних і технічних умов.", level: "low",
+        mitigation: "Відкрийте файли документації або ввімкніть поглиблений AI-аналіз.",
+        evidence: { label: "Дані Prozorro", source: tender.sourceUrl },
+      });
+    }
   }
   return risks;
 }
@@ -179,7 +194,8 @@ function formatFileCount(count: number): string {
   return `${count} ${noun}`;
 }
 
-function buildNextActions(requirements: TenderRequirement[], risks: TenderRisk[]): string[] {
+function buildNextActions(requirements: TenderRequirement[], risks: TenderRisk[], mode: AnalysisMode): string[] {
+  if (mode === "quick") return [];
   const actions = ["Призначити відповідального за фінальну перевірку пакета", "Зіставити кожну вимогу з конкретним файлом-доказом"];
   if (requirements.some((item) => item.id === "guarantee")) actions.unshift("Замовити та перевірити банківську гарантію");
   if (risks.some((risk) => risk.id === "short-deadline")) actions.unshift("Зафіксувати внутрішній дедлайн не пізніше ніж за 12 годин до подання");

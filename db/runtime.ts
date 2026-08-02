@@ -62,6 +62,15 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
       bucket_key TEXT PRIMARY KEY, count INTEGER NOT NULL, reset_at INTEGER NOT NULL
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS public_tender_summaries (
+      tender_external_id TEXT PRIMARY KEY, tender_date_modified TEXT,
+      title TEXT NOT NULL, buyer TEXT NOT NULL, buyer_edrpou TEXT,
+      amount_minor INTEGER, currency TEXT, deadline TEXT, status TEXT NOT NULL,
+      method TEXT, cpv_code TEXT, cpv_label TEXT, document_count INTEGER NOT NULL DEFAULT 0,
+      verdict TEXT NOT NULL, score INTEGER NOT NULL, confidence INTEGER NOT NULL,
+      summary TEXT NOT NULL, result_json TEXT NOT NULL,
+      expires_at INTEGER NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )`),
     database.prepare(`CREATE TABLE IF NOT EXISTS audit_events (
       id TEXT PRIMARY KEY, user_id TEXT, action TEXT NOT NULL, resource_type TEXT NOT NULL,
       resource_id TEXT, ip_hash TEXT, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL
@@ -113,6 +122,7 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_watches_user_tender ON watches(user_id, tender_external_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_watches_active ON watches(active)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_at ON rate_limits(reset_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_public_summaries_expires_at ON public_tender_summaries(expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_user_created ON audit_events(user_id, created_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_resource ON audit_events(resource_type, resource_id)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email)"),

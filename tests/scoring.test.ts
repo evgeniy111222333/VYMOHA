@@ -55,14 +55,20 @@ describe("tender scoring", () => {
   });
 
   it("builds traceable requirements and actionable risks", () => {
-    const result = analyzeTender(tenderFixture({
+    const quick = analyzeTender(tenderFixture({
       deadline: "2026-08-03T00:00:00+03:00",
       guaranteeAmount: 25_000,
-    }), undefined, now);
-    expect(result.requirements.some((item) => item.id === "guarantee")).toBe(true);
-    expect(result.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["short-deadline", "guarantee-risk"]));
-    expect(result.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["profile-unknown", "document-review"]));
-    expect(result.nextActions.length).toBeGreaterThan(1);
-    expect(result.requirements.every((item) => item.evidence.source.startsWith("https://"))).toBe(true);
+    }), undefined, now, undefined, "quick");
+    expect(quick.requirements.some((item) => item.id === "guarantee")).toBe(true);
+    expect(quick.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["short-deadline", "guarantee-risk"]));
+    expect(quick.risks.map((item) => item.id)).toEqual(expect.arrayContaining(["profile-unknown", "document-review"]));
+    expect(quick.nextActions).toEqual([]);
+    expect(quick.requirements.every((item) => item.evidence.source.startsWith("https://"))).toBe(true);
+
+    const deep = analyzeTender(tenderFixture({
+      deadline: "2026-08-03T00:00:00+03:00",
+      guaranteeAmount: 25_000,
+    }), undefined, now, undefined, "deep");
+    expect(deep.nextActions.length).toBeGreaterThan(1);
   });
 });

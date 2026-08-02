@@ -36,6 +36,13 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Debug endpoint — lives in the same isolate as the enhancer so globalThis log is accessible
+    if (url.pathname === "/api/debug/analysis-log") {
+      const { getAnalysisDebugLog } = await import("@/src/infrastructure/openai/enhancer");
+      const log = getAnalysisDebugLog();
+      return Response.json({ count: log.length, entries: log }, { headers: { "cache-control": "no-store" } });
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {

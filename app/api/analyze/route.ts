@@ -6,18 +6,43 @@ import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { fetchTender } from "@/src/infrastructure/prozorro/client";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { completeAnalysisUsage, refundAnalysisCredits, reserveAnalysisCredits } from "@/src/infrastructure/storage/billing";
-import { consumeRateLimit, getCompanyProfile, saveAnalysis, writeAuditEvent } from "@/src/infrastructure/storage/repository";
+import { consumeRateLimit, getCompanyProfile, saveAnalysis, upsertPublicTenderSummary, writeAuditEvent } from "@/src/infrastructure/storage/repository";
 import { apiError, HttpError, requestUser } from "@/src/lib/http";
 import { assertBodySize, assertSameOrigin, clientAddress, sha256 } from "@/src/lib/security";
 import { analyzeRequestSchema } from "@/src/lib/validation";
 
 export const dynamic = "force-dynamic";
 
+const RATE_LIMITS = {
+  quickAnon: { limit: 3, window: 3_600, message: "Ліміт безплатних перевірок вичерпано. Увійдіть, щоб продовжити." },
+  quickUser: { limit: 10, window: 3_600, message: "Ліміт швидких перевірок вичерпано. Спробуйте пізніше." },
+  paid: { limit: 30, window: 3_600, message: "Ліміт аналізів вичерпано. Спробуйте пізніше." },
+} as const;
+
+function pickAnalyzeRateLimit(tier: AnalysisTier, userId: string | null, ipHash: string): { bucket: string; limit: number; window: number; message: string } {
+  if (tier === "quick") {
+    return userId
+      ? { bucket: `analyze:quick:user:${userId}`, ...RATE_LIMITS.quickUser }
+      : { bucket: `analyze:quick:anon:${ipHash}`, ...RATE_LIMITS.quickAnon };
+  }
+  return { bucket: `analyze:paid:user:${userId ?? ipHash}`, ...RATE_LIMITS.paid };
+}
+
 export async function POST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request);
     assertBodySize(request, 32_000);
-    const parsed = analyzeRequestSchema.safeParse(await request.json());
+    let rawBody: unknown;
+    const rawText = await request.text();
+    try {
+      rawBody = JSON.parse(rawText);
+    } catch (parseError) {
+      console.error(`[analyze] JSON parse error: ${parseError}`);
+      console.error(`[analyze] raw body (first 500 chars): ${rawText.slice(0, 500)}`);
+      console.error(`[analyze] raw body hex (first 40 bytes): ${[...rawText.slice(0, 40)].map(c => c.charCodeAt(0).toString(16).padStart(4, "0")).join(" ")}`);
+      return Response.json({ error: { message: "Невалідний JSON у тілі запиту." } }, { status: 400 });
+    }
+    const parsed = analyzeRequestSchema.safeParse(rawBody);
     if (!parsed.success) {
       return Response.json({ error: { message: "Перевірте введені дані.", details: parsed.error.issues } }, { status: 422 });
     }
@@ -26,8 +51,9 @@ export async function POST(request: Request): Promise<Response> {
     const requestedTier: AnalysisTier = parsed.data.analysisTier ?? (parsed.data.deepAnalysis ? "deep" : "quick");
     const tier = getAnalysisTier(requestedTier);
     const ipHash = await sha256(clientAddress(request));
-    const allowed = await consumeRateLimit(`analyze:${user?.id ?? ipHash}`, user ? 30 : 8, 3_600);
-    if (!allowed) return Response.json({ error: { message: "Ліміт аналізів вичерпано. Спробуйте пізніше." } }, { status: 429 });
+    const rate = pickAnalyzeRateLimit(requestedTier, user?.id ?? null, ipHash);
+    const allowed = await consumeRateLimit(rate.bucket, rate.limit, rate.window);
+    if (!allowed) return Response.json({ error: { message: rate.message } }, { status: 429 });
 
     const account = user ? await ensureUserAccount(user) : null;
     if (account?.status === "suspended") throw new HttpError(403, "Обліковий запис призупинено. Зверніться до адміністратора.");
@@ -35,8 +61,7 @@ export async function POST(request: Request): Promise<Response> {
     const company = parsed.data.company ?? (user ? await getCompanyProfile(user.id) : undefined) ?? undefined;
     const tender = await fetchTender(parsed.data.source);
     const buyerContext = tender.buyerEdrpou ? await fetchBuyerContext(tender.buyerEdrpou) : undefined;
-    let analysis = analyzeTender(tender, company, new Date(), buyerContext);
-    analysis.analysisTier = "quick";
+    let analysis = analyzeTender(tender, company, new Date(), buyerContext, requestedTier);
     let creditBalance = account?.creditBalance;
 
     if (requestedTier !== "quick" && user) {
@@ -62,9 +87,12 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (user) await saveAnalysis(user.id, analysis);
+    if (requestedTier === "quick") {
+      try { await upsertPublicTenderSummary({ analysis }); } catch (error) { console.error("public summary upsert failed", error); }
+    }
     await writeAuditEvent({
       userId: user?.id, action: "analysis.created", resourceType: "tender",
-      resourceId: tender.externalId, ipHash, metadata: { mode: analysis.mode, score: analysis.score },
+      resourceId: tender.externalId, ipHash, metadata: { mode: analysis.mode, tier: requestedTier, score: analysis.score },
     });
     return Response.json({ data: analysis, meta: { creditBalance } }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {

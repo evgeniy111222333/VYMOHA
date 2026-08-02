@@ -36,6 +36,30 @@ export type StoredWatch = {
 
 export type ActiveWatch = StoredWatch & { userId: string };
 
+export type PublicTenderSummary = {
+  tenderExternalId: string;
+  tenderDateModified: string | null;
+  title: string;
+  buyer: string;
+  buyerEdrpou: string | null;
+  amountMinor: number | null;
+  currency: string | null;
+  deadline: string | null;
+  status: string;
+  method: string | null;
+  cpvCode: string | null;
+  cpvLabel: string | null;
+  documentCount: number;
+  verdict: string;
+  score: number;
+  confidence: number;
+  summary: string;
+  resultJson: string;
+  expiresAt: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export async function getCompanyProfile(userId: string): Promise<(CompanyProfile & { region?: string }) | null> {
   const database = await ensureDatabase();
   const row = await database.prepare(`SELECT name, edrpou, region, cpv_codes_json, capabilities_json, certifications_json
@@ -206,6 +230,99 @@ export async function writeAuditEvent(input: {
     crypto.randomUUID(), input.userId ?? null, input.action, input.resourceType,
     input.resourceId ?? null, input.ipHash ?? null, JSON.stringify(input.metadata ?? {}), new Date().toISOString(),
   ).run();
+}
+
+const PUBLIC_SUMMARY_TTL_SECONDS = 30 * 60;
+
+export async function getPublicTenderSummary(externalId: string): Promise<PublicTenderSummary | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(
+    `SELECT tender_external_id, tender_date_modified, title, buyer, buyer_edrpou,
+      amount_minor, currency, deadline, status, method, cpv_code, cpv_label,
+      document_count, verdict, score, confidence, summary, result_json,
+      expires_at, created_at, updated_at
+     FROM public_tender_summaries WHERE tender_external_id = ? LIMIT 1`,
+  ).bind(externalId).first<Record<string, unknown>>();
+  if (!row) return null;
+  return mapPublicSummary(row);
+}
+
+export async function upsertPublicTenderSummary(input: {
+  analysis: import("@/src/domain/tender/types").TenderAnalysis;
+  ttlSeconds?: number;
+}): Promise<void> {
+  const database = await ensureDatabase();
+  const now = new Date();
+  const ttl = input.ttlSeconds ?? PUBLIC_SUMMARY_TTL_SECONDS;
+  const expiresAt = Math.floor(now.getTime() / 1000) + ttl;
+  const tender = input.analysis.tender;
+  const visibleDocs = tender.documents.filter((doc) => doc.title.toLowerCase() !== "sign.p7s");
+  const sanitizedAnalysis = {
+    ...input.analysis,
+    questionsToBuyer: undefined,
+    documentCoverage: undefined,
+    risks: input.analysis.risks.map((risk) => ({ ...risk, mitigation: risk.mitigation.slice(0, 240) })),
+  };
+  await database.prepare(
+    `INSERT INTO public_tender_summaries (
+      tender_external_id, tender_date_modified, title, buyer, buyer_edrpou,
+      amount_minor, currency, deadline, status, method, cpv_code, cpv_label,
+      document_count, verdict, score, confidence, summary, result_json,
+      expires_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(tender_external_id) DO UPDATE SET
+      tender_date_modified = excluded.tender_date_modified,
+      title = excluded.title, buyer = excluded.buyer, buyer_edrpou = excluded.buyer_edrpou,
+      amount_minor = excluded.amount_minor, currency = excluded.currency,
+      deadline = excluded.deadline, status = excluded.status, method = excluded.method,
+      cpv_code = excluded.cpv_code, cpv_label = excluded.cpv_label,
+      document_count = excluded.document_count, verdict = excluded.verdict,
+      score = excluded.score, confidence = excluded.confidence,
+      summary = excluded.summary, result_json = excluded.result_json,
+      expires_at = excluded.expires_at, updated_at = excluded.updated_at`,
+  ).bind(
+    tender.externalId, tender.dateModified ?? null, tender.title, tender.buyer,
+    tender.buyerEdrpou ?? null,
+    tender.amount ? Math.round(tender.amount * 100) : null,
+    tender.currency ?? null, tender.deadline ?? null, tender.status,
+    tender.method ?? null, tender.cpvCode ?? null, tender.cpvLabel ?? null,
+    visibleDocs.length, input.analysis.verdict, input.analysis.score,
+    input.analysis.confidence, input.analysis.summary.slice(0, 500),
+    JSON.stringify(sanitizedAnalysis), expiresAt,
+    now.toISOString(), now.toISOString(),
+  ).run();
+}
+
+export async function isPublicSummaryFresh(summary: PublicTenderSummary, tenderDateModified: string | null | undefined): Promise<boolean> {
+  if (summary.expiresAt * 1000 <= Date.now()) return false;
+  if (tenderDateModified && summary.tenderDateModified && summary.tenderDateModified !== tenderDateModified) return false;
+  return true;
+}
+
+function mapPublicSummary(row: Record<string, unknown>): PublicTenderSummary {
+  return {
+    tenderExternalId: String(row.tender_external_id),
+    tenderDateModified: row.tender_date_modified ? String(row.tender_date_modified) : null,
+    title: String(row.title),
+    buyer: String(row.buyer),
+    buyerEdrpou: row.buyer_edrpou ? String(row.buyer_edrpou) : null,
+    amountMinor: row.amount_minor === null || row.amount_minor === undefined ? null : Number(row.amount_minor),
+    currency: row.currency ? String(row.currency) : null,
+    deadline: row.deadline ? String(row.deadline) : null,
+    status: String(row.status),
+    method: row.method ? String(row.method) : null,
+    cpvCode: row.cpv_code ? String(row.cpv_code) : null,
+    cpvLabel: row.cpv_label ? String(row.cpv_label) : null,
+    documentCount: Number(row.document_count),
+    verdict: String(row.verdict),
+    score: Number(row.score),
+    confidence: Number(row.confidence),
+    summary: String(row.summary),
+    resultJson: String(row.result_json),
+    expiresAt: Number(row.expires_at),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
 }
 
 function parseStringArray(value: unknown): string[] {

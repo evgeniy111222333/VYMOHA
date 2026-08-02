@@ -95,6 +95,34 @@ export const rateLimits = sqliteTable(
   (table) => [index("idx_rate_limits_reset_at").on(table.resetAt)],
 );
 
+export const publicTenderSummaries = sqliteTable(
+  "public_tender_summaries",
+  {
+    tenderExternalId: text("tender_external_id").primaryKey(),
+    tenderDateModified: text("tender_date_modified"),
+    title: text("title").notNull(),
+    buyer: text("buyer").notNull(),
+    buyerEdrpou: text("buyer_edrpou"),
+    amountMinor: integer("amount_minor"),
+    currency: text("currency"),
+    deadline: text("deadline"),
+    status: text("status").notNull(),
+    method: text("method"),
+    cpvCode: text("cpv_code"),
+    cpvLabel: text("cpv_label"),
+    documentCount: integer("document_count").notNull().default(0),
+    verdict: text("verdict").notNull(),
+    score: integer("score").notNull(),
+    confidence: integer("confidence").notNull(),
+    summary: text("summary").notNull(),
+    resultJson: text("result_json").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+  },
+  (table) => [index("idx_public_summaries_expires_at").on(table.expiresAt)],
+);
+
 export const auditEvents = sqliteTable(
   "audit_events",
   {
