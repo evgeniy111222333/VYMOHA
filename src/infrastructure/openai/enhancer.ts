@@ -545,7 +545,23 @@ function finalizeAnalysis(input: {
         .replace(/фінальний вердикт — ['"]?(?:maybe|go|no-go)['"]?/gi, `фінальний вердикт — '${verdict === "no-go" ? "не заходити" : verdict === "go" ? "можна заходити" : "потрібна перевірка"}'`)
         .slice(0, 900),
       requirements: parsed.requirements.slice(0, 32).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),
-      risks: parsed.risks.slice(0, 20).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),
+      risks: (() => {
+        const list = parsed.risks.slice(0, 20).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } }));
+        if (!submissionOpen || (analysis.tender.status && analysis.tender.status !== "active.tendering")) {
+          const hasDeadlineRisk = list.some((r) => r.id === "deadline-closed" || r.title.toLowerCase().includes("дедлайн"));
+          if (!hasDeadlineRisk) {
+            list.unshift({
+              id: "deadline-closed",
+              level: "critical",
+              title: "Дедлайн подання пропозицій минув",
+              description: `Прийом пропозицій за цією закупівлею закритий Prozorro (статус: ${analysis.tender.status}). Нову заявку подати вже неможливо.`,
+              mitigation: "Додати замовника в моніторинг на нові закупівлі.",
+              evidence: { label: "Дані Prozorro", source: sourceUrl, excerpt: `Статус Prozorro: ${analysis.tender.status}` },
+            });
+          }
+        }
+        return list;
+      })(),
       nextActions: parsed.nextActions.slice(0, 8),
       questionsToBuyer: parsed.questionsToBuyer.slice(0, 8),
       documentCoverage: parsed.documentCoverage.slice(0, 16),
