@@ -41,7 +41,7 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
     <section className="required-checklist-panel">
       <div className="required-checklist__head">
         <div className="required-checklist__title-group">
-          <span className="section-kicker"><CheckSquare size={14} /> Конструктор пакета документів</span>
+          <span className="required-checklist__kicker"><CheckSquare size={14} /> Конструктор пакета документів</span>
           <h3>Чек-лист подання пропозиції ({totalCount} пунктів)</h3>
           <p className="required-checklist__subtitle">Кожен пункт підтверджено цитатою з тендерної документації або законодавства</p>
         </div>
@@ -92,32 +92,32 @@ export function RequiredDocumentsChecklist({ items }: { items: RequiredDocumentI
               className={`required-checklist-card ${isDone ? "is-done" : ""}`}
             >
               <div className="required-checklist-card__header">
-                <div
-                  className="required-checklist-card__check-toggle"
-                  onClick={() => toggleCheck(item.id)}
-                  role="checkbox"
-                  aria-checked={isDone}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === " " || e.key === "Enter") {
-                      e.preventDefault();
-                      toggleCheck(item.id);
-                    }
-                  }}
-                >
-                  {isDone ? <CheckSquare size={20} className="icon-done" /> : <Square size={20} className="icon-pending" />}
-                </div>
-
-                <div className="required-checklist-card__meta">
+                <div className="required-checklist-card__header-left">
+                  <div
+                    className="required-checklist-card__check-toggle"
+                    onClick={() => toggleCheck(item.id)}
+                    role="checkbox"
+                    aria-checked={isDone}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Enter") {
+                        e.preventDefault();
+                        toggleCheck(item.id);
+                      }
+                    }}
+                  >
+                    {isDone ? <CheckSquare size={18} className="icon-done" /> : <Square size={18} className="icon-pending" />}
+                  </div>
                   <span className="required-checklist-card__cat">
                     <Icon size={12} /> {catInfo.label}
                   </span>
-                  {item.requiredType && (
-                    <span className={`required-checklist-card__type required-checklist-card__type--${item.requiredType}`}>
-                      {item.requiredType === "document" ? "Документ / Файл" : item.requiredType === "statement" ? "Декларативна галочка" : "Довідка або витяг"}
-                    </span>
-                  )}
                 </div>
+
+                {item.requiredType && (
+                  <span className={`required-checklist-card__type required-checklist-card__type--${item.requiredType}`}>
+                    {item.requiredType === "document" ? "Документ / Файл" : item.requiredType === "statement" ? "Декларативна галочка" : "Довідка або витяг"}
+                  </span>
+                )}
               </div>
 
               <div className="required-checklist-card__body">
