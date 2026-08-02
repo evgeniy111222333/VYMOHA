@@ -119,6 +119,30 @@ export async function listAnalyses(userId: string, limit = 20): Promise<StoredAn
   }));
 }
 
+export async function getAnalysisById(userId: string, id: string): Promise<TenderAnalysis | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(`SELECT result_json FROM analyses WHERE user_id = ? AND id = ? LIMIT 1`)
+    .bind(userId, id).first<Record<string, unknown>>();
+  if (!row?.result_json) return null;
+  try {
+    return JSON.parse(String(row.result_json)) as TenderAnalysis;
+  } catch {
+    return null;
+  }
+}
+
+export async function getLatestAnalysisByTender(userId: string, tenderExternalId: string): Promise<TenderAnalysis | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(`SELECT result_json FROM analyses WHERE user_id = ? AND tender_external_id = ? ORDER BY created_at DESC LIMIT 1`)
+    .bind(userId, tenderExternalId).first<Record<string, unknown>>();
+  if (!row?.result_json) return null;
+  try {
+    return JSON.parse(String(row.result_json)) as TenderAnalysis;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveDocument(
   userId: string,
   input: { name: string; mimeType: string; bytes: ArrayBuffer },

@@ -25,7 +25,7 @@ export default async function DashboardPage() {
         {analyses.length ? (
           <div className="dashboard-table">
             {analyses.map((item) => (
-              <Link href={`/analyze?source=${encodeURIComponent(item.tenderExternalId)}`} key={item.id}>
+              <Link href={`/dashboard/tenders/${item.id}`} key={item.id}>
                 <span className={`score-chip score-chip--${item.verdict}`}>{item.score}</span>
                 <span>
                   <b>{item.title}</b>
