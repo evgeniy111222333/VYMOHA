@@ -1,4 +1,4 @@
-import { ArrowUpRight, User } from "lucide-react";
+import { ArrowUpRight, LayoutDashboard, User } from "lucide-react";
 import Link from "next/link";
 import { getAuthUser } from "@/app/auth";
 import { Logo } from "@/components/brand/Logo";
@@ -22,10 +22,11 @@ export async function SiteHeader() {
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt="" />
                 ) : (
-                  <User size={14} />
+                  <User size={13} />
                 )}
               </span>
               <span>Кабінет</span>
+              <LayoutDashboard size={13} className="header-user-badge__dash" />
             </Link>
           ) : (
             <Link href="/auth/sign-in" className="text-link" prefetch={false}>
