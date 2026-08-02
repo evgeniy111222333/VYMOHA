@@ -35,11 +35,12 @@ body { overflow-x: clip; background: var(--cream); }
 .site-header .button--dark { min-height: 43px; padding-inline: 17px; color: var(--night); background: var(--signal); box-shadow: none; }
 .site-header .button--dark:hover { background: #c2ff69; transform: translateY(-2px); }
 
-.header-user-badge { display: inline-flex; align-items: center; gap: 9px; min-height: 43px; padding: 0 16px 0 10px; border-radius: 10px; background: #1b1e1a; border: 1px solid #343b32; color: #f5f2e8; font: 600 11px var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; transition: all .18s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+.header-user-badge { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; padding: 0 14px; border-radius: 10px; background: #1b1e1a; border: 1px solid #343b32; color: #f5f2e8; font: 600 11px/1 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; transition: all .18s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 .header-user-badge:hover { background: #232822; border-color: var(--violet); color: #fff; box-shadow: 3px 3px 0 var(--violet); transform: translate(-1px, -1px); }
-.header-user-badge__icon { width: 24px; height: 24px; border-radius: 6px; background: rgba(91, 74, 255, 0.18); border: 1px solid rgba(91, 74, 255, 0.35); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #a79aff; flex: 0 0 auto; }
-.header-user-badge__icon img { width: 100%; height: 100%; object-fit: cover; }
-.header-user-badge__dash { color: #8b9287; transition: color .18s ease, transform .18s ease; }
+.header-user-badge__icon { width: 22px; height: 22px; border-radius: 5px; background: rgba(91, 74, 255, 0.18); border: 1px solid rgba(91, 74, 255, 0.35); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; color: #a79aff; flex: 0 0 auto; }
+.header-user-badge__icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.header-user-badge > span:not(.header-user-badge__icon) { display: inline-block; margin-top: 1px; }
+.header-user-badge__dash { color: #8b9287; display: block; flex: 0 0 auto; transition: color .18s ease, transform .18s ease; }
 .header-user-badge:hover .header-user-badge__dash { color: var(--signal); transform: translateX(2px); }
 
 .hero-v3 { min-height: auto; padding: 82px 0 0; color: #f5f2e8; background: var(--night); overflow: hidden; position: relative; }
