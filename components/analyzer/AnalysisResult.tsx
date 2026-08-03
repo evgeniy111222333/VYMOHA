@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ArrowUpRight, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { formatSignals, SIGNAL_UNIT } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
@@ -14,6 +14,18 @@ import { ScoreGauge } from "./ScoreGauge";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
+
+const statusDisplay: Record<string, { label: string; badge: string }> = {
+  "active.tendering": { label: "Прийом пропозицій", badge: "status-pill--active" },
+  "active.pre-qualification": { label: "Прекваліфікація", badge: "status-pill--active" },
+  "active.pre-qualification.stand-still": { label: "Прекваліфікація (Оскарження)", badge: "status-pill--warning" },
+  "active.auction": { label: "Аукціон", badge: "status-pill--active" },
+  "active.qualification": { label: "Кваліфікація переможця", badge: "status-pill--warning" },
+  "active.awarded": { label: "Укладення договору", badge: "status-pill--warning" },
+  "complete": { label: "Завершено", badge: "status-pill--muted" },
+  "cancelled": { label: "Скасовано", badge: "status-pill--danger" },
+  "unsuccessful": { label: "Не відбувся", badge: "status-pill--danger" },
+};
 
 type AnalysisResultProps = {
   analysis: TenderAnalysis;
@@ -33,6 +45,17 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
   const isQuick = (analysis.analysisTier ?? "quick") === "quick";
   const showUpsell = isQuick && analysis.verdict !== "no-go";
 
+  const statusInfo = statusDisplay[analysis.tender.status] || { label: analysis.tender.status || "Очікує", badge: "status-pill--muted" };
+  const vatText = analysis.tender.vatIncluded === true ? "(з ПДВ)" : analysis.tender.vatIncluded === false ? "(без ПДВ)" : "";
+
+  const minStepFormatted = analysis.tender.minimalStepAmount
+    ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.minimalStepAmount)
+    : "Не вказано";
+
+  const minStepPercent = (analysis.tender.amount && analysis.tender.minimalStepAmount)
+    ? ` (${((analysis.tender.minimalStepAmount / analysis.tender.amount) * 100).toFixed(1)}%)`
+    : "";
+
   async function enableWatch() {
     const response = await fetch("/api/watches", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ source: analysis.tender.externalId }) });
     if (response.ok) setWatching(true);
@@ -45,11 +68,45 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         <div><span className="mono">{analysis.tender.externalId}</span><h2>{analysis.tender.title}</h2><p>{analysis.tender.buyer}</p></div>
         <a href={analysis.tender.sourceUrl} target="_blank" rel="noreferrer">Відкрити в Prozorro <ExternalLink size={14} /></a>
       </div>
+
       <div className="analysis-summary">
         <ScoreGauge score={analysis.score} verdict={analysis.verdict} />
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
-        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount}</b></span><span><small>Покриття даних</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Швидка перевірка"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}</div>
+        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount} <small className="vat-tag">{vatText}</small></b></span><span><small>Покриття даних</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Швидка перевірка"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}</div>
       </div>
+
+      <div className="tender-passport-bar">
+        <div className="passport-item">
+          <small>Бюджет</small>
+          <b>{amount} <i className="vat-tag">{vatText}</i></b>
+        </div>
+        <div className="passport-item">
+          <small>Актуальний етап</small>
+          <span className={`status-pill ${statusInfo.badge}`}>{statusInfo.label}</span>
+        </div>
+        <div className="passport-item">
+          <small>Оголошено</small>
+          <b>{analysis.tender.datePublished ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium" }).format(new Date(analysis.tender.datePublished)) : "—"}</b>
+        </div>
+        <div className="passport-item">
+          <small>Мінімальний крок</small>
+          <b>{minStepFormatted}<small>{minStepPercent}</small></b>
+        </div>
+        <div className="passport-item">
+          <small>Забезпечення</small>
+          <b>{analysis.tender.guaranteeAmount ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.guaranteeCurrency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.guaranteeAmount) : "Без застави"}</b>
+        </div>
+      </div>
+
+      {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && (
+        <div className="expert-vat-warning">
+          <AlertCircle size={18} />
+          <div>
+            <b>Експертне застереження щодо ПДВ:</b>
+            <p>Замовник вказав очікувану вартість <b>БЕЗ ПДВ</b>. Якщо ваша компанія є платником ПДВ (+20%), обов’язково враховуйте податкові зобов’язання при розрахунку маржинальності та формуванні підсумкової ціни пропозиції!</p>
+          </div>
+        </div>
+      )}
 
       <div className="analysis-context-grid">
         <ScoreExplanation analysis={analysis} />

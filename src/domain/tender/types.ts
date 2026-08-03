@@ -66,6 +66,7 @@ export type NormalizedTender = {
   currency?: string;
   vatIncluded?: boolean;
   deadline?: string;
+  datePublished?: string;
   dateModified?: string;
   cpvCode?: string;
   cpvLabel?: string;

@@ -190,6 +190,22 @@
 .required-checklist-card__quote { display: flex; align-items: flex-start; gap: 6px; color: #353a32; font-size: 11px; font-style: italic; line-height: 1.45; }
 .required-checklist-card__quote svg { flex: 0 0 auto; margin-top: 2px; color: #5b4aff; }
 .required-checklist-card__quote q { quotes: "«" "»"; }
+
+/* Prozorro Passport Bar & VAT Warning */
+.tender-passport-bar { margin-top: 18px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-top: 1px solid #e0d8c8; background: #f8f5ec; border-radius: 10px; }
+.passport-item { display: flex; flex-direction: column; gap: 4px; }
+.passport-item small { font: 700 9px var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .08em; color: #7b817a; }
+.passport-item b { font-size: 13px; font-weight: 700; color: #171a17; }
+.vat-tag { font-style: normal; font-size: 11px; color: #5b4aff; font-weight: 600; }
+.status-pill { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 6px; font: 700 10px var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .05em; }
+.status-pill--active { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+.status-pill--warning { background: rgba(217, 119, 6, 0.12); color: #b45309; }
+.status-pill--danger { background: rgba(220, 38, 38, 0.12); color: #b91c1c; }
+.status-pill--muted { background: rgba(107, 114, 128, 0.12); color: #4b5563; }
+
+.expert-vat-warning { margin-top: 16px; padding: 14px 18px; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; display: flex; align-items: flex-start; gap: 12px; font-size: 12px; line-height: 1.5; }
+.expert-vat-warning svg { flex: 0 0 auto; color: #d97706; margin-top: 2px; }
+.expert-vat-warning b { color: #78350f; }
 @media (max-width: 900px) {
   .public-analyze__head { flex-direction: column; }
   .public-analyze__summary { grid-template-columns: 1fr; }
