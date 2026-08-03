@@ -243,6 +243,66 @@
 .prozorro-timeline-detail__action svg { flex: 0 0 auto; color: #8d7cff; margin-top: 2px; }
 .prozorro-timeline-detail__action b { color: #fff; display: block; margin-bottom: 2px; }
 .prozorro-timeline-detail__action p { margin: 0; color: #c7c3ff; }
+
+/* Prozorro Revisions Audit Card & Text Diff */
+.tender-revisions-card { margin-top: 20px; padding: 22px 24px; background: #141714; border: 1px solid #2b3028; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 18px; }
+.tender-revisions-card.is-empty { padding: 18px 22px; background: #121512; border-color: #242923; }
+.tender-revisions-card__empty-head { display: flex; align-items: center; gap: 14px; color: #7d837a; }
+.tender-revisions-card__empty-head h4 { margin: 0 0 3px; font-size: 14px; font-weight: 700; color: #c5cbc0; }
+.tender-revisions-card__empty-head p { margin: 0; font-size: 12px; color: #7d837a; }
+.tender-revisions-card__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.tender-revisions-card__title { display: flex; align-items: center; gap: 12px; color: var(--signal); }
+.tender-revisions-card__kicker { font: 700 9px/1 var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--signal); }
+.tender-revisions-card__title h3 { margin: 3px 0 0; font-size: 17px; font-weight: 700; color: #f3f0e7; }
+.tender-revisions-card__count { font: 700 10px var(--font-mono), monospace; padding: 4px 10px; border-radius: 6px; background: rgba(255,255,255,0.06); color: #d1d6cc; text-transform: uppercase; }
+
+/* AI Impact Banner */
+.rev-impact-banner { padding: 16px 20px; border-radius: 10px; display: flex; align-items: flex-start; gap: 14px; font-size: 13px; line-height: 1.5; }
+.rev-impact--critical { background: #2a1215; border: 1px solid rgba(239, 68, 68, 0.35); border-left: 4px solid #ef4444; color: #fca5a5; }
+.rev-impact--critical svg { color: #ef4444; flex: 0 0 auto; margin-top: 2px; }
+.rev-impact--critical b { color: #fecaca; font-weight: 700; }
+.rev-impact--warning { background: #1c1815; border: 1px solid rgba(245, 158, 11, 0.35); border-left: 4px solid #f59e0b; color: #fde68a; }
+.rev-impact--warning svg { color: #f59e0b; flex: 0 0 auto; margin-top: 2px; }
+.rev-impact--warning b { color: #fef08a; font-weight: 700; }
+.rev-impact--info { background: #131924; border: 1px solid rgba(59, 130, 246, 0.35); border-left: 4px solid #3b82f6; color: #bfdbfe; }
+.rev-impact--info svg { color: #3b82f6; flex: 0 0 auto; margin-top: 2px; }
+.rev-impact--info b { color: #dbeafe; font-weight: 700; }
+.rev-impact-banner__action { margin-top: 10px; padding: 8px 12px; border-radius: 6px; background: rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px; font-size: 12px; }
+
+/* Revision Items Timeline */
+.rev-timeline-list { display: flex; flex-direction: column; gap: 10px; }
+.rev-item { border-radius: 10px; background: #181c18; border: 1px solid #282e27; overflow: hidden; transition: border-color .2s ease; }
+.rev-item.is-expanded { border-color: #3b443a; }
+.rev-item__header { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; user-select: none; }
+.rev-item__header:hover { background: #1c221c; }
+.rev-item__meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.rev-item__badge { font: 700 10px var(--font-mono), monospace; padding: 3px 8px; border-radius: 4px; background: rgba(163, 230, 53, 0.12); color: var(--signal); }
+.rev-item__date { font: 500 11px var(--font-mono), monospace; color: #a0a69c; display: flex; align-items: center; gap: 5px; }
+.rev-item__author { font-size: 11px; color: #787e75; }
+.rev-item__toggle { display: flex; align-items: center; gap: 8px; color: #8b9287; }
+.rev-item__toggle small { font: 600 10px var(--font-mono), monospace; text-transform: uppercase; }
+.chevron { transition: transform .2s ease; }
+.chevron.is-open { transform: rotate(180deg); }
+
+/* Changes Grid & Diff */
+.rev-item__body { padding: 0 18px 16px; border-top: 1px solid #232822; }
+.rev-changes-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.rev-change-row { padding: 12px 14px; border-radius: 8px; background: #131613; border: 1px solid #20251f; display: flex; flex-direction: column; gap: 8px; }
+.rev-change-row__left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.op-chip { font: 700 9px var(--font-mono), monospace; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+.op-chip--replace { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.op-chip--add { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.op-chip--remove { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.rev-change-row__left b { font-size: 13px; color: #f3f0e7; }
+.mono-path { font: 400 10px var(--font-mono), monospace; color: #6a7067; }
+.rev-change-row__diff { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; background: #0d100d; border: 1px solid #1a1e19; flex-wrap: wrap; }
+.diff-val { display: flex; flex-direction: column; gap: 2px; }
+.diff-val small { font: 700 9px var(--font-mono), monospace; text-transform: uppercase; }
+.diff-val--old small { color: #f87171; }
+.diff-val--old span { color: #fca5a5; font-size: 12px; text-decoration: line-through; }
+.diff-val--new small { color: #4ade80; }
+.diff-val--new span { color: #bbf7d0; font-size: 12px; font-weight: 600; }
+.diff-arrow { color: #6a7067; flex: 0 0 auto; }
 @media (max-width: 900px) {
   .tender-passport-bar { grid-template-columns: repeat(2, 1fr); }
   .prozorro-timeline-stepper { grid-template-columns: repeat(2, 1fr); }

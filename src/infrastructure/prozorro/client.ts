@@ -42,12 +42,59 @@ export function extractTenderReference(value: string): string {
 }
 
 export async function fetchTender(value: string): Promise<NormalizedTender> {
+  const envelope = await fetchRawTenderEnvelope(value);
+  return normalizeTender(envelope.data);
+}
+
+export async function fetchRawTenderEnvelope(value: string): Promise<ApiEnvelope<ApiTender>> {
   const reference = extractTenderReference(value);
   const internalId = INTERNAL_ID_PATTERN.test(reference) ? reference : await resolveInternalId(reference);
   const response = await safeFetch(`${API_ROOT}/${internalId}`);
   if (!response.ok) throw new TenderNotFoundError(reference);
-  const envelope = (await response.json()) as ApiEnvelope<ApiTender>;
-  return normalizeTender(envelope.data);
+  return (await response.json()) as ApiEnvelope<ApiTender>;
+}
+
+export function parseTenderRevisions(raw: ApiTender): TenderRevision[] {
+  const rawRevisions = Array.isArray(raw.revisions) ? raw.revisions : [];
+  return rawRevisions.map((rev, idx) => {
+    const record = rev as Record<string, unknown>;
+    const rawChanges = Array.isArray(record.changes) ? record.changes : [];
+    const changes: TenderRevisionChange[] = rawChanges.map((change) => {
+      const c = change as Record<string, unknown>;
+      const op = String(c.op ?? "replace");
+      const path = String(c.path ?? "");
+      const oldValue = c.oldValue !== undefined ? String(c.oldValue) : undefined;
+      const newValue = c.value !== undefined ? String(c.value) : undefined;
+      return {
+        op,
+        path,
+        fieldLabel: translatePatchPath(path),
+        oldValue,
+        newValue,
+      };
+    });
+    return {
+      id: String(record.id ?? `rev-${idx + 1}`),
+      date: String(record.date ?? new Date().toISOString()),
+      author: String(record.author ?? "Замовник"),
+      changes,
+    };
+  });
+}
+
+function translatePatchPath(path: string): string {
+  if (path.includes("/tenderPeriod/endDate")) return "Дедлайн подання пропозицій";
+  if (path.includes("/tenderPeriod/startDate")) return "Дата початку прийому пропозицій";
+  if (path.includes("/value/amount")) return "Очікувана вартість закупівлі";
+  if (path.includes("/value/valueAddedTaxIncluded")) return "Податок ПДВ";
+  if (path.includes("/minimalStep/amount")) return "Мінімальний крок аукціону";
+  if (path.includes("/documents")) return "Тендерний документ / Додаток ТД";
+  if (path.includes("/guarantee/amount")) return "Розмір тендерного забезпечення";
+  if (path.includes("/title")) return "Назва процедури";
+  if (path.includes("/description")) return "Опис предмету закупівлі";
+  if (path.includes("/status")) return "Статус процедури Prozorro";
+  if (path.includes("/items")) return "Перелік товарів або послуг";
+  return "Параметри тендерної документації";
 }
 
 async function resolveInternalId(externalId: string): Promise<string> {

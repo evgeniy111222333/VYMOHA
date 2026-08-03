@@ -118,6 +118,30 @@ export type TenderAnalysis = {
   questionsToBuyer?: string[];
   documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
   requiredDocumentsChecklist?: RequiredDocumentItem[];
-  creditsCharged?: number;
+  revisionsAnalysis?: TenderRevisionsAnalysis;
   disclaimer: string;
+  creditsCharged?: number;
+};
+
+export type TenderRevisionChange = {
+  op: string;
+  path: string;
+  fieldLabel: string;
+  oldValue?: string;
+  newValue?: string;
+};
+
+export type TenderRevision = {
+  id: string;
+  date: string;
+  author: string;
+  changes: TenderRevisionChange[];
+};
+
+export type TenderRevisionsAnalysis = {
+  impactLevel: "critical" | "warning" | "info";
+  summary: string;
+  actionRequired: string;
+  hasRevisions: boolean;
+  revisions: TenderRevision[];
 };

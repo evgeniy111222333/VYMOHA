@@ -11,6 +11,7 @@ import { TenderDocumentList } from "./TenderDocumentList";
 import { RequiredDocumentsChecklist } from "./RequiredDocumentsChecklist";
 import { ScoreGauge } from "./ScoreGauge";
 import { ProzorroLifecycleTimeline } from "./ProzorroLifecycleTimeline";
+import { TenderRevisionsDiff } from "./TenderRevisionsDiff";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
@@ -105,6 +106,10 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         auctionStartDate={analysis.tender.auctionStartDate}
         hasAuction={analysis.tender.hasAuction}
       />
+
+      {analysis.revisionsAnalysis && (
+        <TenderRevisionsDiff analysis={analysis.revisionsAnalysis} />
+      )}
 
       {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && (
         <div className="expert-vat-warning">
