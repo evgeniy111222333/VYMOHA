@@ -95,9 +95,9 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
                       <p>
                         Замовник вказав очікувану вартість <b>без ПДВ</b>.
                         {analysis.tender.amount ? (
-                          <> Розрахункове ПДВ (+20%): <b>+{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 0.2)}</b> (орієнтовно <b>{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 1.2)}</b> з ПДВ).</>
+                          <> Базовий розрахунок ПДВ (20%): <b>+{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 0.2)}</b> (разом ~<b>{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 1.2)}</b>).</>
                         ) : null}{" "}
-                        Платникам ПДВ необхідно враховувати +20% при калькуляції пропозиції.
+                        Враховуйте відповідну ставку ПДВ для вашої категорії товарів/послуг при формуванні підсумкової ціни.
                       </p>
                     </div>
                   )}
