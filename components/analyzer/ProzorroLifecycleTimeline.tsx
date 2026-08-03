@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Clock, Info, HelpCircle, ShieldAlert, Gavel, FileCheck, FileSignature } from "lucide-react";
+import { Check, Clock, Info, ShieldAlert, Gavel, FileCheck, FileSignature } from "lucide-react";
 
 type ProzorroLifecycleTimelineProps = {
   status: string;
@@ -40,131 +40,116 @@ export function ProzorroLifecycleTimeline({ status, datePublished, deadline, auc
     ? "Без аукціону"
     : formattedAuctionDate
       ? formattedAuctionDate
-      : "Призначається після дедлайну";
-
-  const auctionDescription = hasAuction === false
-    ? "У цій процедурі електронний редукціон не передбачено. Оцінка пропозицій відбувається за початковими поданими цінами."
-    : formattedAuctionDate
-      ? `Точний час аукціону призначено Prozorro: ${formattedAuctionDate}. Онлайн-торги відбудуться у 3 раунди.`
-      : "Точний час аукціону призначається електронною системою Prozorro протягом 24 годин після завершення прийому пропозицій.";
-
-  const auctionActionHint = hasAuction === false
-    ? "Подавайте одразу остаточну мінімальну ціну, оскільки другого шансу знизити ціну на аукціоні не буде."
-    : formattedAuctionDate
-      ? `Отримати персональне посилання на тоги у своєму майданчику та увійти на аукціон до ${formattedAuctionDate}.`
-      : "У 1-му раунді першим ходить той, хто дав найвищу ціну. Останнім (найвигідніша позиція) ходить той, у кого початкова ціна найнижча.";
+      : "Після дедлайну";
 
   const currentStageIndex = getStageIndex(status);
 
   const stages: StageInfo[] = [
     {
       id: "published",
-      title: "1. Оголошення",
-      subtitle: "Публікація в Prozorro",
+      title: "Оголошення",
+      subtitle: "Публікація закупівлі",
       icon: Clock,
       timeWindow: formattedPublished,
-      description: "Замовник оголосив про початок проведення закупівлі та завантажив первинну тендерну документацію.",
-      actionHint: "Час первинного ознайомлення з вимогами ТД та формування списку запитань замовнику.",
+      description: "Замовник оголосив про проведення торгів та оприлюднив тендерну документацію.",
+      actionHint: "Ознайомтеся з вимогами ТД та за потреби поставте запитання замовнику до дедлайну.",
     },
     {
       id: "tendering",
-      title: "2. Прийом пропозицій",
-      subtitle: "Подання заявок",
+      title: "Прийом заявок",
+      subtitle: "Подання пропозицій",
       icon: FileCheck,
       timeWindow: `до ${formattedDeadline}`,
-      description: "Період, коли учасники завантажують свої тендерні пропозиції, кошториси та довідки у систему Prozorro.",
-      actionHint: "Обов’язково подайте пропозицію та банківську гарантію до кінця цього строку. Після дедлайну подача заблокована.",
+      description: "Період для підготовки, формування кошторисів та подачі пропозиції у систему Prozorro.",
+      actionHint: "Подайте тендерну пропозицію та банківську гарантію до кінця цього строку.",
     },
     {
       id: "auction",
-      title: "3. Аукціон",
-      subtitle: hasAuction === false ? "Без редукціону" : "Онлайн-торги",
+      title: "Аукціон",
+      subtitle: hasAuction === false ? "Без аукціону" : "Онлайн-торги",
       icon: Gavel,
       timeWindow: auctionTimeWindow,
-      description: auctionDescription,
-      actionHint: auctionActionHint,
+      description: hasAuction === false
+        ? "Електронний редукціон не передбачено. Оцінка відбувається за початковими поданими цінами."
+        : formattedAuctionDate
+          ? `Онлайн-аукціон призначено Prozorro на ${formattedAuctionDate}.`
+          : "Час аукціону призначається системою Prozorro протягом 24h після кінцевого дедлайну.",
+      actionHint: "Отримайте посилання на аукціон у кабінеті майданчика та вчасно увійдіть на торги.",
     },
     {
       id: "qualification",
-      title: "4. Кваліфікація",
-      subtitle: "Розгляд документів",
+      title: "Кваліфікація",
+      subtitle: "Перевірка переможця",
       icon: ShieldAlert,
-      timeWindow: "5–20 робочих днів",
-      description: "Замовник перевіряє тендерну пропозицію переможця аукціону на відповідність усім вимогам ТД та ст. 45.",
-      actionHint: "Стежте за протоколами замовника. У разі дискваліфікації переможця черга переходить до наступного учасника.",
+      timeWindow: "5–20 днів",
+      description: "Замовник розглядав документи пропозиції на відповідність усім вимогам ТД та ст. 45.",
+      actionHint: "Стежте за протоколами замовника. У разі відхилення пропозиція переходить наступному.",
     },
     {
       id: "awarded",
-      title: "5. Угоду підписано",
-      subtitle: "Контракт та завершення",
+      title: "Угоду підписано",
+      subtitle: "Завершення торгів",
       icon: FileSignature,
-      timeWindow: "Протягом 10–20 днів",
-      description: "Прийняття рішення про намір укласти договір та безпосереднє підписання контракту в Prozorro.",
-      actionHint: "Період оскарження рішень у АМКУ (подання скарг) триває до підписання остаточного договору.",
+      timeWindow: "10–20 днів",
+      description: "Рішення про намір укласти договір прийнято та контракт підписано в Prozorro.",
+      actionHint: "Період для оскарження торгів в АМКУ вичерпано, договір набув чинності.",
     },
   ];
 
-  const displayedStage = activeHoverStage !== null ? stages[activeHoverStage]! : stages[currentStageIndex]!;
+  const activeIndex = activeHoverStage !== null ? activeHoverStage : currentStageIndex;
+  const activeStage = stages[activeIndex]!;
 
   return (
-    <div className="prozorro-timeline-card">
-      <div className="prozorro-timeline-card__header">
-        <div>
-          <span className="prozorro-timeline-card__kicker">Життєвий цикл закупівлі</span>
-          <h3>Інтерактивна хронологія Prozorro</h3>
+    <div className="timeline-rail-card">
+      <div className="timeline-rail-card__head">
+        <div className="timeline-rail-card__title">
+          <Clock size={15} />
+          <span>Перебіг закупівлі — <b>Етап {currentStageIndex + 1} з 5</b></span>
         </div>
-        <div className="prozorro-timeline-card__current-tag">
-          <span className="pulsing-dot" />
-          Поточний етап: <b>{stages[currentStageIndex]!.subtitle}</b>
-        </div>
+        <span className="timeline-rail-card__status">
+          <span className="timeline-pulse-dot" />
+          {stages[currentStageIndex]!.title}: {stages[currentStageIndex]!.subtitle}
+        </span>
       </div>
 
-      <div className="prozorro-timeline-stepper">
+      <div className="timeline-rail-track">
+        <div
+          className="timeline-rail-progress"
+          style={{ width: `${(currentStageIndex / (stages.length - 1)) * 100}%` }}
+        />
         {stages.map((stage, idx) => {
           const isDone = idx < currentStageIndex;
           const isCurrent = idx === currentStageIndex;
-          const isHovered = activeHoverStage === idx;
-
-          let stateClass = "is-future";
-          if (isDone) stateClass = "is-done";
-          if (isCurrent) stateClass = "is-current";
+          const isSelected = idx === activeIndex;
 
           return (
-            <div
+            <button
               key={stage.id}
-              className={`timeline-step ${stateClass} ${isHovered ? "is-hovered" : ""}`}
-              onMouseEnter={() => setActiveHoverStage(idx)}
-              onMouseLeave={() => setActiveHoverStage(null)}
+              type="button"
+              className={`timeline-rail-node ${isDone ? "is-done" : ""} ${isCurrent ? "is-current" : ""} ${isSelected ? "is-selected" : ""}`}
               onClick={() => setActiveHoverStage(idx)}
             >
-              <div className="timeline-step__node">
-                {isDone ? <CheckCircle2 size={16} /> : <span>0{idx + 1}</span>}
+              <div className="timeline-rail-node__circle">
+                {isDone ? <Check size={12} /> : <span>{idx + 1}</span>}
               </div>
-              <span className="timeline-step__label">{stage.title}</span>
-              <small className="timeline-step__time">{stage.timeWindow}</small>
-            </div>
+              <span className="timeline-rail-node__label">{stage.title}</span>
+              <small className="timeline-rail-node__time">{stage.timeWindow}</small>
+            </button>
           );
         })}
       </div>
 
-      {displayedStage && (
-        <div className="prozorro-timeline-detail">
-          <div className="prozorro-timeline-detail__head">
-            <div className="prozorro-timeline-detail__title">
-              <displayedStage.icon size={18} />
-              <h4>{displayedStage.title}: <span>{displayedStage.subtitle}</span></h4>
-            </div>
-            <span className="prozorro-timeline-detail__time">{displayedStage.timeWindow}</span>
+      {activeStage && (
+        <div className="timeline-rail-detail">
+          <div className="timeline-rail-detail__header">
+            <activeStage.icon size={15} />
+            <b>{activeIndex + 1}. {activeStage.title}</b>
+            <span className="timeline-rail-detail__badge">{activeStage.subtitle}</span>
           </div>
-
-          <p className="prozorro-timeline-detail__desc">{displayedStage.description}</p>
-
-          <div className="prozorro-timeline-detail__action">
-            <Info size={16} />
-            <div>
-              <b>Що потрібно робити постачальнику:</b>
-              <p>{displayedStage.actionHint}</p>
-            </div>
+          <p className="timeline-rail-detail__text">{activeStage.description}</p>
+          <div className="timeline-rail-detail__hint">
+            <Info size={13} />
+            <span><b>Дія для постачальника:</b> {activeStage.actionHint}</span>
           </div>
         </div>
       )}
