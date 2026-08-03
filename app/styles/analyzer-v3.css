@@ -340,34 +340,27 @@
   .tender-document-list > :nth-child(odd) { border-right: 0; }
 }
 
-/* Prozorro Lot Card & Multi-Lot Pills */
-.prozorro-lot-card { margin-top: 20px; padding: 22px 24px; background: #141714; border: 1px solid #2b3028; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 18px; }
-.prozorro-lot-card__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.prozorro-lot-card__title { display: flex; align-items: center; gap: 12px; }
-.prozorro-lot-card__title svg { color: var(--signal); flex: 0 0 auto; }
-.prozorro-lot-card__kicker { font: 700 9px/1 var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--signal); }
-.prozorro-lot-card__title h3 { margin: 3px 0 0; font-size: 16px; font-weight: 700; color: #f3f0e7; }
+/* Prozorro Sleek Lot Strip & Tab Bar */
+.prozorro-lot-strip { margin-top: 18px; padding: 18px 22px; background: #131613; border: 1px solid #282e27; border-radius: 12px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
+.prozorro-lot-strip__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prozorro-lot-strip__title { display: flex; align-items: center; gap: 8px; color: var(--signal); font-size: 13px; font-weight: 700; }
+.prozorro-lot-strip__title b { color: #f3f0e7; }
+.prozorro-lot-strip__hint { color: #7e857b; font-size: 11px; }
 
-.lot-badge-pill { font: 700 11px/1 var(--font-mono), monospace; padding: 5px 12px; border-radius: 20px; }
-.lot-badge-pill--single { background: rgba(163, 230, 53, 0.1); border: 1px solid rgba(163, 230, 53, 0.25); color: #d0f481; }
-.lot-badge-pill--multi { background: rgba(91, 74, 255, 0.12); border: 1px solid rgba(91, 74, 255, 0.3); color: #c4b9ff; }
+.lot-tab-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+.lot-tab-item { flex: 1 1 calc(33.333% - 8px); min-width: 200px; padding: 9px 12px; border-radius: 8px; background: #191c18; border: 1px solid #272d26; text-align: left; cursor: pointer; transition: all .15s ease; display: flex; flex-direction: column; gap: 2px; }
+.lot-tab-item:hover { background: #20251e; border-color: #384136; }
+.lot-tab-item--active { background: #1c2319; border-color: var(--signal); box-shadow: 0 0 12px rgba(163, 230, 53, 0.12); }
+.lot-tab-item__badge { font: 700 9px var(--font-mono), monospace; color: var(--signal); text-transform: uppercase; letter-spacing: .06em; }
+.lot-tab-item__name { font-size: 11px; font-weight: 600; color: #e6e3da; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lot-tab-item__val { font: 700 11px var(--font-mono), monospace; color: #8e9489; }
+.lot-tab-item--active .lot-tab-item__val { color: #fff; }
 
-.lot-selector-pills { display: flex; gap: 10px; flex-wrap: wrap; }
-.lot-pill-btn { flex: 1 1 calc(33.333% - 10px); min-width: 220px; padding: 12px 14px; border-radius: 10px; background: #1a1e1a; border: 1px solid #2d342c; text-align: left; cursor: pointer; transition: all .18s ease; display: flex; flex-direction: column; gap: 4px; color: #d1d6cc; }
-.lot-pill-btn:hover { background: #222821; border-color: #40493e; }
-.lot-pill-btn--active { background: #1e251b; border-color: var(--signal); box-shadow: 0 0 16px rgba(163, 230, 53, 0.12), inset 0 0 0 1px var(--signal); }
-.lot-pill-btn__num { font: 700 9px var(--font-mono), monospace; color: var(--signal); text-transform: uppercase; letter-spacing: .08em; }
-.lot-pill-btn__title { font-size: 12px; font-weight: 600; color: #f3f0e7; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
-.lot-pill-btn__amount { font: 700 11px var(--font-mono), monospace; color: #a2a89c; }
-.lot-pill-btn--active .lot-pill-btn__amount { color: #f3f0e7; }
+.active-lot-box { padding: 12px 14px; border-radius: 8px; background: #181b17; border: 1px solid #252b24; display: flex; flex-direction: column; gap: 10px; }
+.active-lot-box__header b { font-size: 12px; color: #dcd7cc; font-weight: 600; }
+.active-lot-box__stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.active-lot-box__stats small { font: 700 9px var(--font-mono), monospace; text-transform: uppercase; color: #6e746b; display: block; margin-bottom: 2px; }
+.active-lot-box__stats b { font-size: 12px; font-weight: 700; color: #f3f0e7; display: flex; align-items: center; gap: 4px; }
 
-.lot-detail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.lot-detail-item { padding: 12px 16px; border-radius: 10px; background: #191c19; border: 1px solid #292f28; }
-.lot-detail-item small { font: 700 9px/1.2 var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .08em; color: #7d837a; display: block; margin-bottom: 4px; }
-.lot-detail-item b { font-size: 13px; font-weight: 700; color: #f3f0e7; display: flex; align-items: center; gap: 6px; }
-.lot-vat-tag { font: 700 9px var(--font-mono), monospace; color: var(--signal); background: rgba(163, 230, 53, 0.12); padding: 2px 5px; border-radius: 4px; }
-
-.expert-lot-insight { padding: 12px 16px; border-radius: 10px; background: rgba(91, 74, 255, 0.08); border: 1px solid rgba(91, 74, 255, 0.25); display: flex; align-items: flex-start; gap: 10px; color: #d8d4ff; font-size: 12px; line-height: 1.45; }
-.expert-lot-insight svg { flex: 0 0 auto; color: #9c8dff; margin-top: 2px; }
-.expert-lot-insight b { color: #fff; display: block; margin-bottom: 2px; }
-.expert-lot-insight p { margin: 0; color: #c4beff; }
+.expert-lot-tip { font-size: 11px; color: #b7b3ff; background: rgba(91, 74, 255, 0.08); border: 1px solid rgba(91, 74, 255, 0.2); padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; gap: 8px; line-height: 1.35; }
+.expert-lot-tip svg { flex: 0 0 auto; color: #9c8dff; }
