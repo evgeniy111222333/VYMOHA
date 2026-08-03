@@ -39,7 +39,7 @@ type AnalysisResultProps = {
 
 export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0, signInHref = "/dashboard", analyzeHref = "/analyze", billingHref = "/dashboard/billing" }: AnalysisResultProps) {
   const [watching, setWatching] = useState(false);
-  const [dismissedVatNotice, setDismissedVatNotice] = useState(false);
+  const [showVatPopover, setShowVatPopover] = useState(false);
   const amount = analysis.tender.amount
     ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount)
     : "не вказано";
@@ -74,7 +74,44 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
       <div className="analysis-summary">
         <ScoreGauge score={analysis.score} verdict={analysis.verdict} />
         <div><small>Попереднє рішення</small><h3>{verdictLabels[analysis.verdict]}</h3><p>{analysis.summary}</p></div>
-        <div className="analysis-summary__facts"><span><small>Бюджет</small><b>{amount} <small className="vat-tag">{vatText}</small></b></span><span><small>Покриття даних</small><b>{analysis.confidence}%</b></span><span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Швидка перевірка"}</b></span>{analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}</div>
+        <div className="analysis-summary__facts">
+          <span>
+            <small>Бюджет</small>
+            <b>
+              {amount}{" "}
+              {analysis.tender.vatIncluded === false ? (
+                <span
+                  className="vat-badge vat-badge--warning"
+                  onClick={() => setShowVatPopover(!showVatPopover)}
+                  onMouseEnter={() => setShowVatPopover(true)}
+                  onMouseLeave={() => setShowVatPopover(false)}
+                >
+                  <AlertCircle size={11} /> без ПДВ (+20%)
+                  {showVatPopover && (
+                    <div className="vat-popover">
+                      <div className="vat-popover__title">
+                        <AlertCircle size={14} />
+                        <b>Застереження щодо ПДВ</b>
+                      </div>
+                      <p>
+                        Замовник вказав ціну <b>без ПДВ</b>.
+                        {analysis.tender.amount ? (
+                          <> Розрахункове ПДВ (+20%): <b>+{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 0.2)}</b> (разом ~{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 1.2)}).</>
+                        ) : null}{" "}
+                        Платникам ПДВ варто додавати 20% податкового зобов’язання при калькуляції цінової пропозиції.
+                      </p>
+                    </div>
+                  )}
+                </span>
+              ) : (
+                <small className="vat-tag">{vatText}</small>
+              )}
+            </b>
+          </span>
+          <span><small>Покриття даних</small><b>{analysis.confidence}%</b></span>
+          <span><small>Режим</small><b>{analysis.mode === "ai-enhanced" ? <><FileCheck2 size={12} /> Документи</> : "Швидка перевірка"}</b></span>
+          {analysis.creditsCharged ? <span><small>Використано</small><b><Coins size={12} /> {formatSignals(analysis.creditsCharged, true)}</b></span> : null}
+        </div>
       </div>
 
       <div className="tender-passport-bar">
@@ -113,27 +150,6 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
 
       {analysis.revisionsAnalysis && (
         <TenderRevisionsDiff analysis={analysis.revisionsAnalysis} />
-      )}
-
-      {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && !dismissedVatNotice && (
-        <div className="expert-vat-banner">
-          <div className="expert-vat-banner__left">
-            <AlertCircle size={16} />
-            <div>
-              <b>Експертне застереження щодо ПДВ (Вартість вказана БЕЗ ПДВ):</b>
-              <p>Замовник оголосив ціну закупівлі без ПДВ. Якщо ваша компанія є платником ПДВ (+20%), обов’язково додавайте податкові зобов’язання при розрахунку маржинальності та формуванні пропозиції.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="expert-vat-banner__close"
-            onClick={() => setDismissedVatNotice(true)}
-            title="Закрити нагадування"
-            aria-label="Закрити"
-          >
-            <X size={15} />
-          </button>
-        </div>
       )}
 
       <div className="analysis-context-grid">
