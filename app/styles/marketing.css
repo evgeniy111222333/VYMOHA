@@ -148,11 +148,21 @@
 .guide-page__content li:last-child { border: 0; }
 .guide-page__content li svg { color: var(--forest); }
 .guide-page__content aside { padding: 20px; border-left: 3px solid var(--amber); background: var(--amber-soft); font-size: 13px; line-height: 1.6; }
-.legal-page { max-width: 780px; padding-top: 150px; padding-bottom: 120px; }
-.legal-page h1 { font-size: 68px; letter-spacing: -.07em; }
-.legal-page h2 { margin-top: 45px; font-size: 25px; letter-spacing: -.04em; }
-.legal-page p { color: #474a43; font-size: 16px; line-height: 1.8; }
-.legal-page a { color: var(--forest); text-decoration: underline; }
+.legal-page { max-width: 820px; padding-top: 150px; padding-bottom: 120px; }
+.legal-page h1 { font-size: clamp(40px, 5vw, 64px); letter-spacing: -.06em; line-height: 1.05; }
+.legal-page h2 { margin-top: 42px; font-size: 24px; letter-spacing: -.03em; color: var(--ink); border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.legal-page p { color: #3b3e37; font-size: 15px; line-height: 1.75; margin: 16px 0; }
+.legal-page a { color: var(--forest); text-decoration: underline; font-weight: 600; }
+.legal-updated { font: 600 12px var(--font-geist-mono), monospace; color: #767970; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 30px !important; }
+.legal-warning { margin: 28px 0; padding: 20px 24px; border-radius: 12px; background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #f59e0b; color: #92400e; font-size: 14px; line-height: 1.65; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.08); }
+.legal-warning strong { display: block; color: #78350f; font-size: 13px; margin-bottom: 6px; letter-spacing: .04em; }
+.legal-warning p { color: #92400e; margin: 0; font-size: 14px; }
+.legal-notice { margin: 28px 0; padding: 18px 22px; border-radius: 12px; background: #f0fdf4; border: 1px solid #dcfce7; border-left: 5px solid #16a34a; color: #166534; font-size: 14px; line-height: 1.65; }
+.legal-notice strong { display: block; color: #14532d; margin-bottom: 4px; }
+.legal-notice p { color: #166534; margin: 0; font-size: 14px; }
+.legal-page ul { margin: 18px 0; padding-left: 22px; }
+.legal-page li { color: #3b3e37; font-size: 15px; line-height: 1.7; margin-bottom: 8px; }
+.legal-page code { background: #f0ede4; padding: 2px 6px; border-radius: 4px; font-family: var(--font-geist-mono), monospace; font-size: 13px; color: var(--forest); }
 
 @media (max-width: 980px) {
   .site-nav { display: none; }
