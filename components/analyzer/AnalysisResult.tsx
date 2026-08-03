@@ -81,24 +81,23 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
               {amount}{" "}
               {analysis.tender.vatIncluded === false ? (
                 <span
-                  className="vat-badge vat-badge--warning"
-                  onClick={() => setShowVatPopover(!showVatPopover)}
+                  className="vat-hover-trigger"
                   onMouseEnter={() => setShowVatPopover(true)}
                   onMouseLeave={() => setShowVatPopover(false)}
                 >
-                  <AlertCircle size={11} /> без ПДВ (+20%)
+                  <small className="vat-tag vat-tag--warning">без ПДВ ℹ️</small>
                   {showVatPopover && (
-                    <div className="vat-popover">
-                      <div className="vat-popover__title">
-                        <AlertCircle size={14} />
+                    <div className="vat-floating-tooltip">
+                      <div className="vat-floating-tooltip__head">
+                        <AlertCircle size={13} />
                         <b>Застереження щодо ПДВ</b>
                       </div>
                       <p>
-                        Замовник вказав ціну <b>без ПДВ</b>.
+                        Замовник вказав очікувану вартість <b>без ПДВ</b>.
                         {analysis.tender.amount ? (
-                          <> Розрахункове ПДВ (+20%): <b>+{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 0.2)}</b> (разом ~{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 1.2)}).</>
+                          <> Розрахункове ПДВ (+20%): <b>+{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 0.2)}</b> (орієнтовно <b>{new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount * 1.2)}</b> з ПДВ).</>
                         ) : null}{" "}
-                        Платникам ПДВ варто додавати 20% податкового зобов’язання при калькуляції цінової пропозиції.
+                        Платникам ПДВ необхідно враховувати +20% при калькуляції цінової пропозиції.
                       </p>
                     </div>
                   )}
