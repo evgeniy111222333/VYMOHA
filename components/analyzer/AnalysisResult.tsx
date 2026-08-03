@@ -78,14 +78,6 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
 
       <div className="tender-passport-bar">
         <div className="passport-item">
-          <small>Бюджет</small>
-          <b>{amount} <i className="vat-tag">{vatText}</i></b>
-        </div>
-        <div className="passport-item">
-          <small>Актуальний етап</small>
-          <span className={`status-pill ${statusInfo.badge}`}>{statusInfo.label}</span>
-        </div>
-        <div className="passport-item">
           <small>Оголошено</small>
           <b>{analysis.tender.datePublished ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium" }).format(new Date(analysis.tender.datePublished)) : "—"}</b>
         </div>

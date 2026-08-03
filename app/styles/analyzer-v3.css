@@ -192,7 +192,7 @@
 .required-checklist-card__quote q { quotes: "«" "»"; }
 
 /* Prozorro Passport Bar & VAT Warning — Vymoha Dark System */
-.tender-passport-bar { margin-top: 20px; padding: 16px 22px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; background: #141714; border: 1px solid #2b3028; border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
+.tender-passport-bar { margin-top: 20px; padding: 16px 22px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; background: #141714; border: 1px solid #2b3028; border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }
 .passport-item { display: flex; flex-direction: column; gap: 6px; }
 .passport-item small { font: 700 9px/1 var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .1em; color: #7d837a; }
 .passport-item b { font-size: 13px; font-weight: 700; color: #f3f0e7; display: flex; align-items: center; gap: 5px; }
