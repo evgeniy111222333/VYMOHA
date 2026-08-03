@@ -9,8 +9,8 @@ import { ScoreExplanation } from "./ScoreExplanation";
 import { TenderDocumentList } from "./TenderDocumentList";
 
 import { RequiredDocumentsChecklist } from "./RequiredDocumentsChecklist";
-
 import { ScoreGauge } from "./ScoreGauge";
+import { ProzorroLifecycleTimeline } from "./ProzorroLifecycleTimeline";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
@@ -97,6 +97,12 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
           <b>{analysis.tender.guaranteeAmount ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.guaranteeCurrency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.guaranteeAmount) : "Без застави"}</b>
         </div>
       </div>
+
+      <ProzorroLifecycleTimeline
+        status={analysis.tender.status}
+        datePublished={analysis.tender.datePublished}
+        deadline={analysis.tender.deadline}
+      />
 
       {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && (
         <div className="expert-vat-warning">
