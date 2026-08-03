@@ -115,7 +115,7 @@ export function ProzorroLifecycleTimeline({ status, datePublished, deadline, auc
       <div className="timeline-rail-track">
         <div
           className="timeline-rail-progress"
-          style={{ width: `${(currentStageIndex / (stages.length - 1)) * 100}%` }}
+          style={{ width: `calc(80% * ${currentStageIndex / (stages.length - 1)})` }}
         />
         {stages.map((stage, idx) => {
           const isDone = idx < currentStageIndex;
