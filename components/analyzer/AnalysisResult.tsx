@@ -102,6 +102,8 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         status={analysis.tender.status}
         datePublished={analysis.tender.datePublished}
         deadline={analysis.tender.deadline}
+        auctionStartDate={analysis.tender.auctionStartDate}
+        hasAuction={analysis.tender.hasAuction}
       />
 
       {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && (

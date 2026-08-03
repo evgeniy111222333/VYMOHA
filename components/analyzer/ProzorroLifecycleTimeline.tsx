@@ -7,6 +7,8 @@ type ProzorroLifecycleTimelineProps = {
   status: string;
   datePublished?: string;
   deadline?: string;
+  auctionStartDate?: string;
+  hasAuction?: boolean;
 };
 
 type StageInfo = {
@@ -19,7 +21,7 @@ type StageInfo = {
   timeWindow: string;
 };
 
-export function ProzorroLifecycleTimeline({ status, datePublished, deadline }: ProzorroLifecycleTimelineProps) {
+export function ProzorroLifecycleTimeline({ status, datePublished, deadline, auctionStartDate, hasAuction }: ProzorroLifecycleTimelineProps) {
   const [activeHoverStage, setActiveHoverStage] = useState<number | null>(null);
 
   const formattedPublished = datePublished
@@ -29,6 +31,28 @@ export function ProzorroLifecycleTimeline({ status, datePublished, deadline }: P
   const formattedDeadline = deadline
     ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(deadline))
     : "Дата не вказана";
+
+  const formattedAuctionDate = auctionStartDate
+    ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(auctionStartDate))
+    : null;
+
+  const auctionTimeWindow = hasAuction === false
+    ? "Без аукціону"
+    : formattedAuctionDate
+      ? formattedAuctionDate
+      : "Призначається після дедлайну";
+
+  const auctionDescription = hasAuction === false
+    ? "У цій процедурі електронний редукціон не передбачено. Оцінка пропозицій відбувається за початковими поданими цінами."
+    : formattedAuctionDate
+      ? `Точний час аукціону призначено Prozorro: ${formattedAuctionDate}. Онлайн-торги відбудуться у 3 раунди.`
+      : "Точний час аукціону призначається електронною системою Prozorro протягом 24 годин після завершення прийому пропозицій.";
+
+  const auctionActionHint = hasAuction === false
+    ? "Подавайте одразу остаточну мінімальну ціну, оскільки другого шансу знизити ціну на аукціоні не буде."
+    : formattedAuctionDate
+      ? `Отримати персональне посилання на тоги у своєму майданчику та увійти на аукціон до ${formattedAuctionDate}.`
+      : "У 1-му раунді першим ходить той, хто дав найвищу ціну. Останнім (найвигідніша позиція) ходить той, у кого початкова ціна найнижча.";
 
   const currentStageIndex = getStageIndex(status);
 
@@ -54,11 +78,11 @@ export function ProzorroLifecycleTimeline({ status, datePublished, deadline }: P
     {
       id: "auction",
       title: "3. Аукціон",
-      subtitle: "Онлайн-торги",
+      subtitle: hasAuction === false ? "Без редукціону" : "Онлайн-торги",
       icon: Gavel,
-      timeWindow: "Після завершення прийому",
-      description: "3-раундовий електронний редукціон. Учасники по черзі знижують свої цінові пропозиції.",
-      actionHint: "У 1-му раунді першим ходить той, хто надав найвищу початкову ціну. Останнім ходить той, у кого початкова ціна найнижча.",
+      timeWindow: auctionTimeWindow,
+      description: auctionDescription,
+      actionHint: auctionActionHint,
     },
     {
       id: "qualification",

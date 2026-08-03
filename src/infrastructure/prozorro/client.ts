@@ -102,6 +102,10 @@ function normalizeTender(raw: ApiTender): NormalizedTender {
     deadline: optionalString(record.tenderPeriod?.endDate),
     datePublished: optionalString(record.tenderPeriod?.startDate ?? record.date),
     dateModified: optionalString(record.dateModified),
+    auctionStartDate: optionalString((record.auctionPeriod as { startDate?: unknown })?.startDate),
+    hasAuction: typeof (record.config as { hasAuction?: unknown })?.hasAuction === "boolean"
+      ? (record.config as { hasAuction: boolean }).hasAuction
+      : undefined,
     cpvCode: optionalString(mainClassification?.id), cpvLabel: optionalString(mainClassification?.description),
     guaranteeAmount: optionalNumber(record.guarantee?.amount), guaranteeCurrency: optionalString(record.guarantee?.currency),
     minimalStepAmount: optionalNumber(record.minimalStep?.amount),

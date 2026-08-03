@@ -68,6 +68,8 @@ export type NormalizedTender = {
   deadline?: string;
   datePublished?: string;
   dateModified?: string;
+  auctionStartDate?: string;
+  hasAuction?: boolean;
   cpvCode?: string;
   cpvLabel?: string;
   guaranteeAmount?: number;
