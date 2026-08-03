@@ -166,6 +166,25 @@ function normalizeTender(raw: ApiTender): NormalizedTender {
       description: optionalString(criterion.description),
     })),
     itemCount: Array.isArray(record.items) ? record.items.length : 0,
+    lots: Array.isArray(record.lots) && record.lots.length > 0 ? record.lots.map((lot: Record<string, unknown>) => {
+      const lotVal = lot.value as { amount?: unknown; currency?: unknown; valueAddedTaxIncluded?: unknown } | undefined;
+      const lotStep = lot.minimalStep as { amount?: unknown } | undefined;
+      const lotGuar = lot.guarantee as { amount?: unknown; currency?: unknown } | undefined;
+      const lotAuction = lot.auctionPeriod as { startDate?: unknown } | undefined;
+      return {
+        id: String(lot.id ?? crypto.randomUUID()),
+        title: String(lot.title ?? "Лот"),
+        description: optionalString(lot.description),
+        status: optionalString(lot.status),
+        amount: optionalNumber(lotVal?.amount),
+        currency: optionalString(lotVal?.currency),
+        vatIncluded: typeof lotVal?.valueAddedTaxIncluded === "boolean" ? lotVal.valueAddedTaxIncluded : undefined,
+        minimalStepAmount: optionalNumber(lotStep?.amount),
+        guaranteeAmount: optionalNumber(lotGuar?.amount),
+        guaranteeCurrency: optionalString(lotGuar?.currency),
+        auctionStartDate: optionalString(lotAuction?.startDate),
+      };
+    }) : undefined,
   };
 }
 

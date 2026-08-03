@@ -52,6 +52,20 @@ export type TenderDocument = {
   dateModified?: string;
 };
 
+export type TenderLot = {
+  id: string;
+  title: string;
+  description?: string;
+  status?: string;
+  amount?: number;
+  currency?: string;
+  vatIncluded?: boolean;
+  minimalStepAmount?: number;
+  guaranteeAmount?: number;
+  guaranteeCurrency?: string;
+  auctionStartDate?: string;
+};
+
 export type NormalizedTender = {
   internalId: string;
   externalId: string;
@@ -78,6 +92,7 @@ export type NormalizedTender = {
   documents: TenderDocument[];
   structuredCriteria: Array<{ title: string; description?: string }>;
   itemCount: number;
+  lots?: TenderLot[];
 };
 
 export type RequiredDocumentCategory = "statutory" | "qualification" | "technical" | "financial" | "other";
@@ -98,29 +113,6 @@ export type CompanyProfile = {
   cpvCodes: string[];
   certifications: string[];
   capabilities: string[];
-};
-
-export type TenderAnalysis = {
-  id: string;
-  tender: NormalizedTender;
-  verdict: Verdict;
-  score: number;
-  confidence: number;
-  scoreFactors: ScoreFactor[];
-  buyerContext?: BuyerContext;
-  summary: string;
-  generatedAt: string;
-  mode: "structured" | "ai-enhanced";
-  analysisTier?: "quick" | "deep" | "expert";
-  requirements: TenderRequirement[];
-  risks: TenderRisk[];
-  nextActions: string[];
-  questionsToBuyer?: string[];
-  documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
-  requiredDocumentsChecklist?: RequiredDocumentItem[];
-  revisionsAnalysis?: TenderRevisionsAnalysis;
-  disclaimer: string;
-  creditsCharged?: number;
 };
 
 export type TenderRevisionChange = {
@@ -144,4 +136,27 @@ export type TenderRevisionsAnalysis = {
   actionRequired: string;
   hasRevisions: boolean;
   revisions: TenderRevision[];
+};
+
+export type TenderAnalysis = {
+  id: string;
+  tender: NormalizedTender;
+  verdict: Verdict;
+  score: number;
+  confidence: number;
+  scoreFactors: ScoreFactor[];
+  buyerContext?: BuyerContext;
+  summary: string;
+  generatedAt: string;
+  mode: "structured" | "ai-enhanced";
+  analysisTier?: "quick" | "deep" | "expert";
+  requirements: TenderRequirement[];
+  risks: TenderRisk[];
+  nextActions: string[];
+  questionsToBuyer?: string[];
+  documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
+  requiredDocumentsChecklist?: RequiredDocumentItem[];
+  revisionsAnalysis?: TenderRevisionsAnalysis;
+  disclaimer: string;
+  creditsCharged?: number;
 };

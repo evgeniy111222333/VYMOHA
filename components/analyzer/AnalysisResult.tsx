@@ -10,6 +10,7 @@ import { TenderDocumentList } from "./TenderDocumentList";
 
 import { RequiredDocumentsChecklist } from "./RequiredDocumentsChecklist";
 import { ScoreGauge } from "./ScoreGauge";
+import { ProzorroLotViewer } from "./ProzorroLotViewer";
 import { ProzorroLifecycleTimeline } from "./ProzorroLifecycleTimeline";
 import { TenderRevisionsDiff } from "./TenderRevisionsDiff";
 
@@ -138,6 +139,13 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
           </div>
         </div>
       </div>
+
+      <ProzorroLotViewer
+        lots={analysis.tender.lots}
+        tenderAmount={analysis.tender.amount}
+        tenderCurrency={analysis.tender.currency}
+        analysisTier={analysis.analysisTier}
+      />
 
       <ProzorroLifecycleTimeline
         status={analysis.tender.status}
