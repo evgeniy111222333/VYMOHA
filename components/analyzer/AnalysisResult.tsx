@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert, ShieldCheck, TrendingDown } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { formatSignals, SIGNAL_UNIT } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
@@ -78,16 +78,27 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
 
       <div className="tender-passport-bar">
         <div className="passport-item">
-          <small>Оголошено</small>
-          <b>{analysis.tender.datePublished ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium" }).format(new Date(analysis.tender.datePublished)) : "—"}</b>
+          <div className="passport-item__icon"><Calendar size={16} /></div>
+          <div>
+            <small>Оголошено</small>
+            <b>{analysis.tender.datePublished ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium" }).format(new Date(analysis.tender.datePublished)) : "—"}</b>
+          </div>
         </div>
+
         <div className="passport-item">
-          <small>Мінімальний крок</small>
-          <b>{minStepFormatted}<small>{minStepPercent}</small></b>
+          <div className="passport-item__icon"><TrendingDown size={16} /></div>
+          <div>
+            <small>Мінімальний крок</small>
+            <b>{minStepFormatted}<small className="step-percent">{minStepPercent}</small></b>
+          </div>
         </div>
+
         <div className="passport-item">
-          <small>Забезпечення</small>
-          <b>{analysis.tender.guaranteeAmount ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.guaranteeCurrency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.guaranteeAmount) : "Без застави"}</b>
+          <div className="passport-item__icon"><ShieldCheck size={16} /></div>
+          <div>
+            <small>Забезпечення</small>
+            <b>{analysis.tender.guaranteeAmount ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.guaranteeCurrency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.guaranteeAmount) : "Без застави"}</b>
+          </div>
         </div>
       </div>
 
