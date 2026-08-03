@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert, ShieldCheck, TrendingDown } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert, ShieldCheck, TrendingDown, X } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { formatSignals, SIGNAL_UNIT } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
@@ -39,6 +39,7 @@ type AnalysisResultProps = {
 
 export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0, signInHref = "/dashboard", analyzeHref = "/analyze", billingHref = "/dashboard/billing" }: AnalysisResultProps) {
   const [watching, setWatching] = useState(false);
+  const [dismissedVatNotice, setDismissedVatNotice] = useState(false);
   const amount = analysis.tender.amount
     ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: analysis.tender.currency ?? "UAH", maximumFractionDigits: 0 }).format(analysis.tender.amount)
     : "не вказано";
@@ -114,13 +115,24 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         <TenderRevisionsDiff analysis={analysis.revisionsAnalysis} />
       )}
 
-      {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && (
-        <div className="expert-vat-warning">
-          <AlertCircle size={18} />
-          <div>
-            <b>Експертне застереження щодо ПДВ:</b>
-            <p>Замовник вказав очікувану вартість <b>БЕЗ ПДВ</b>. Якщо ваша компанія є платником ПДВ (+20%), обов’язково враховуйте податкові зобов’язання при розрахунку маржинальності та формуванні підсумкової ціни пропозиції!</p>
+      {analysis.analysisTier === "expert" && analysis.tender.vatIncluded === false && !dismissedVatNotice && (
+        <div className="expert-vat-banner">
+          <div className="expert-vat-banner__left">
+            <AlertCircle size={16} />
+            <div>
+              <b>Експертне застереження щодо ПДВ (Вартість вказана БЕЗ ПДВ):</b>
+              <p>Замовник оголосив ціну закупівлі без ПДВ. Якщо ваша компанія є платником ПДВ (+20%), обов’язково додавайте податкові зобов’язання при розрахунку маржинальності та формуванні пропозиції.</p>
+            </div>
           </div>
+          <button
+            type="button"
+            className="expert-vat-banner__close"
+            onClick={() => setDismissedVatNotice(true)}
+            title="Закрити нагадування"
+            aria-label="Закрити"
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
 
