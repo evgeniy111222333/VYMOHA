@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Manrope, Onest } from "next/font/google";
 import { MotionEffects } from "@/components/site/MotionEffects";
 import "./globals.css";
-
-const bodyFont = Manrope({ variable: "--font-body", subsets: ["latin", "cyrillic"], display: "swap" });
-const displayFont = Onest({ variable: "--font-display", subsets: ["latin", "cyrillic"], display: "swap" });
-const monoFont = IBM_Plex_Mono({ variable: "--font-mono", subsets: ["latin", "cyrillic"], weight: ["400", "500", "600", "700"], display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vymoha.app"),
@@ -30,7 +25,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="uk">
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}><MotionEffects />{children}</body>
+      <body><MotionEffects />{children}</body>
     </html>
   );
 }

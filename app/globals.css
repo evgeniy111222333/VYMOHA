@@ -1,3 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Manrope:wght@200..800&family=Onest:wght@100..900&display=swap');
+
+:root {
+  --font-body: 'Manrope', sans-serif;
+  --font-display: 'Onest', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-geist-sans: 'Manrope', sans-serif;
+  --font-geist-mono: 'IBM Plex Mono', monospace;
+}
+
 @import "./styles/base.css";
 @import "./styles/marketing.css";
 @import "./styles/analyzer.css";
