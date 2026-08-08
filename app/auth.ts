@@ -19,7 +19,7 @@ export function signInPath(returnTo: string): string {
 }
 
 export function safeReturnPath(value: string | null | undefined): string {
-  if (!value?.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  if (!value || !value.startsWith("/") || value.includes("//")) return "/dashboard";
   try {
     const url = new URL(value, "https://vymoha.local");
     if (url.origin !== "https://vymoha.local" || url.pathname.startsWith("/auth") || url.pathname.startsWith("/api/auth")) return "/dashboard";

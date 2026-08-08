@@ -12,8 +12,13 @@ export async function POST(request: Request): Promise<Response> {
     assertSameOrigin(request); assertBodySize(request, 16_000);
     const parsed = emailRegistrationSchema.safeParse(await request.json());
     if (!parsed.success) throw new HttpError(422, parsed.error.issues[0]?.message ?? "Перевірте введені дані.");
+    
     const ipHash = await sha256(clientAddress(request));
-    if (!await consumeRateLimit(`auth:register:${ipHash}`, 5, 3_600)) throw new HttpError(429, "Забагато спроб. Спробуйте пізніше.");
+    if (!await consumeRateLimit(`auth:register:${ipHash}`, 5, 3_600)) throw new HttpError(429, "Забагато спроб реєстрації. Спробуйте пізніше.");
+    
+    const accountHash = await sha256(parsed.data.email.toLowerCase());
+    if (!await consumeRateLimit(`auth:register:account:${accountHash}`, 5, 3_600)) throw new HttpError(429, "Забагато спроб. Спробуйте пізніше.");
+
     const legacyUserId = request.headers.get("oai-authenticated-user-email")?.toLowerCase() === parsed.data.email
       ? request.headers.get("oai-authenticated-user-id") ?? undefined
       : undefined;
