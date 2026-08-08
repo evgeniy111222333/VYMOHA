@@ -35,7 +35,7 @@ export async function ensureUserAccount(user: UserIdentity): Promise<UserAccount
   const now = new Date().toISOString();
 
   if (!existing) {
-    const startingCredits = forcedAdmin ? adminStartingCredits() : 0;
+    const startingCredits = forcedAdmin ? adminStartingCredits() : 30;
     await database.prepare(`INSERT INTO user_accounts (
       user_id, email, phone, display_name, avatar_url, email_verified, phone_verified,
       role, status, credit_balance, total_credits_purchased, created_at, updated_at
@@ -45,10 +45,11 @@ export async function ensureUserAccount(user: UserIdentity): Promise<UserAccount
       forcedAdmin ? "admin" : "user", startingCredits, now, now,
     ).run();
     if (startingCredits > 0) {
+      const ledgerReason = forcedAdmin ? 'admin_bootstrap' : 'welcome_bonus';
       await database.prepare(`INSERT OR IGNORE INTO credit_ledger (
         id, user_id, delta, balance_after, reason, idempotency_key, metadata_json, created_at
-      ) VALUES (?, ?, ?, ?, 'admin_bootstrap', ?, '{}', ?)`).bind(
-        crypto.randomUUID(), user.id, startingCredits, startingCredits, `bootstrap:${user.id}`, now,
+      ) VALUES (?, ?, ?, ?, ?, ?, '{}', ?)`).bind(
+        crypto.randomUUID(), user.id, startingCredits, startingCredits, ledgerReason, `bootstrap:${user.id}`, now,
       ).run();
     }
   } else {
