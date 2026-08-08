@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
     if (!parsed.success) throw new HttpError(422, parsed.error.issues[0]?.message ?? "Перевірте введені дані.");
     
     const ipHash = await sha256(clientAddress(request));
-    const ipLimit = await consumeRateLimit(`auth:register:${ipHash}`, 20, 3_600);
+    const ipLimit = await consumeRateLimit(`auth:register:${ipHash}`, 200, 3_600);
     if (!ipLimit.allowed) throw new HttpError(429, "Забагато спроб реєстрації. Спробуйте пізніше.", undefined, { "Retry-After": String(Math.max(1, ipLimit.resetAt - Math.floor(Date.now() / 1000))) });
     
     const accountHash = await sha256(parsed.data.email.toLowerCase());

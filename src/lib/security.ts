@@ -1,9 +1,14 @@
 export function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
   if (!origin) return;
-  const requestUrl = new URL(request.url);
-  const originUrl = new URL(origin);
-  if (originUrl.origin !== requestUrl.origin) throw new SecurityError("Запит із зовнішнього джерела заблоковано.");
+  try {
+    const requestUrl = new URL(request.url);
+    const originUrl = new URL(origin);
+    if (originUrl.origin !== requestUrl.origin) throw new SecurityError("Запит із зовнішнього джерела заблоковано.");
+  } catch (error) {
+    if (error instanceof SecurityError) throw error;
+    throw new SecurityError("Недопустиме джерело запиту.");
+  }
 }
 
 export function assertBodySize(request: Request, maxBytes: number): void {
