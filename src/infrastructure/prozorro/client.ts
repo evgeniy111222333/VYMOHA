@@ -1,4 +1,5 @@
-import type { NormalizedTender } from "@/src/domain/tender/types";
+import type { NormalizedTender, TenderRevision, TenderRevisionChange } from "@/src/domain/tender/types";
+import { HttpError } from "@/src/lib/http";
 
 const API_ROOT = "https://public-api.prozorro.gov.ua/api/2.5/tenders";
 const PORTAL_SUMMARY_ROOT = "https://prozorro.gov.ua/api/tenders";
@@ -20,15 +21,15 @@ type TenderDetails = ApiTender & {
   status?: unknown;
   procurementMethodType?: unknown;
   value?: { amount?: unknown; currency?: unknown; valueAddedTaxIncluded?: unknown };
-  tenderPeriod?: { endDate?: unknown };
+  tenderPeriod?: { startDate?: unknown; endDate?: unknown };
   dateModified?: unknown;
   guarantee?: { amount?: unknown; currency?: unknown };
   minimalStep?: { amount?: unknown };
 };
 
-export class TenderNotFoundError extends Error {
+export class TenderNotFoundError extends HttpError {
   constructor(public readonly externalId: string) {
-    super(`Закупівлю ${externalId} не знайдено в останніх оновленнях Prozorro.`);
+    super(404, `Закупівлю ${externalId} не знайдено в останніх оновленнях Prozorro.`);
     this.name = "TenderNotFoundError";
   }
 }
@@ -38,7 +39,7 @@ export function extractTenderReference(value: string): string {
   const externalMatch = normalized.match(TENDER_ID_PATTERN);
   if (externalMatch) return externalMatch[0].toUpperCase();
   if (INTERNAL_ID_PATTERN.test(normalized)) return normalized.toLowerCase();
-  throw new Error("Вкажіть номер у форматі UA-2026-01-01-000001-a або посилання Prozorro.");
+  throw new HttpError(400, "Вкажіть номер у форматі UA-2026-01-01-000001-a або посилання Prozorro.");
 }
 
 export async function fetchTender(value: string): Promise<NormalizedTender> {

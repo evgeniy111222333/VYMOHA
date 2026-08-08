@@ -100,6 +100,14 @@ async function initialize(database: D1Database): Promise<void> {
       credits_charged INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'reserved',
       created_at TEXT NOT NULL, completed_at TEXT
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS analysis_telemetry (
+      id TEXT PRIMARY KEY, analysis_id TEXT NOT NULL, user_hash TEXT NOT NULL,
+      provider TEXT NOT NULL, model TEXT NOT NULL, tier TEXT NOT NULL, status TEXT NOT NULL,
+      error_code TEXT, duration_ms INTEGER NOT NULL, document_count INTEGER NOT NULL DEFAULT 0,
+      documents_read INTEGER NOT NULL DEFAULT 0, input_tokens INTEGER NOT NULL DEFAULT 0,
+      cached_input_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+      cost_microusd INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, expires_at INTEGER NOT NULL
+    )`),
     database.prepare(`CREATE TABLE IF NOT EXISTS auth_identities (
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, provider TEXT NOT NULL,
       provider_subject TEXT NOT NULL, secret_hash TEXT, secret_salt TEXT,
@@ -134,6 +142,8 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_credit_ledger_idempotency ON credit_ledger(idempotency_key)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_usage_analysis_id ON ai_usage(analysis_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_ai_usage_user_created ON ai_usage(user_id, created_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_analysis_telemetry_created ON analysis_telemetry(created_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_analysis_telemetry_expires ON analysis_telemetry(expires_at)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_identities_provider_subject ON auth_identities(provider, provider_subject)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at)"),

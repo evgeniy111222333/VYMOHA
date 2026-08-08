@@ -1,4 +1,4 @@
-import type { TenderAnalysis, TenderRevision, TenderRevisionsAnalysis } from "@/src/domain/tender/types";
+import type { TenderRevision, TenderRevisionsAnalysis } from "@/src/domain/tender/types";
 
 export function buildRevisionsSummary(revisions: TenderRevision[]): TenderRevisionsAnalysis {
   if (!revisions || revisions.length === 0) {

@@ -4,9 +4,6 @@ import { BookmarkCheck, RotateCw } from "lucide-react";
 import { requireAuthUser as requireChatGPTUser } from "@/app/auth";
 import { getAnalysisById, getLatestAnalysisByTender } from "@/src/infrastructure/storage/repository";
 import { AnalysisResult } from "@/components/analyzer/AnalysisResult";
-import { ScoreExplanation } from "@/components/analyzer/ScoreExplanation";
-import { BuyerContextCard } from "@/components/analyzer/BuyerContextCard";
-import { TenderDocumentList } from "@/components/analyzer/TenderDocumentList";
 
 export const dynamic = "force-dynamic";
 

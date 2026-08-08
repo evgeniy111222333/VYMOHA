@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Layers3, Info, CheckCircle2 } from "lucide-react";
+import { Layers3, Info } from "lucide-react";
 import type { TenderLot } from "@/src/domain/tender/types";
 
 type ProzorroLotViewerProps = {
   lots?: TenderLot[];
-  tenderAmount?: number;
   tenderCurrency?: string;
   analysisTier?: "quick" | "deep" | "expert";
 };
@@ -21,15 +20,15 @@ function cleanLotName(title: string, index: number): string {
   return cleaned || `Лот #${index + 1}`;
 }
 
-export function ProzorroLotViewer({ lots, tenderAmount, tenderCurrency = "UAH", analysisTier = "quick" }: ProzorroLotViewerProps) {
-  if (!lots || lots.length <= 1) {
-    return null; // Don't clutter single-lot tenders with extra cards!
-  }
-
-  const [selectedLotId, setSelectedLotId] = useState<string>(lots[0].id);
-  const activeIndex = lots.findIndex((l) => l.id === selectedLotId);
-  const activeLot = lots[activeIndex] || lots[0];
+export function ProzorroLotViewer({ lots, tenderCurrency = "UAH", analysisTier = "quick" }: ProzorroLotViewerProps) {
+  const availableLots = lots ?? [];
+  const [selectedLotId, setSelectedLotId] = useState("");
+  const selectedIndex = availableLots.findIndex((lot) => lot.id === selectedLotId);
+  const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const activeLot = availableLots[activeIndex];
   const isExpert = analysisTier === "expert";
+
+  if (availableLots.length <= 1) return null;
 
   const fmt = (num?: number, curr = "UAH") =>
     num ? new Intl.NumberFormat("uk-UA", { style: "currency", currency: curr, maximumFractionDigits: 0 }).format(num) : "—";
@@ -39,14 +38,14 @@ export function ProzorroLotViewer({ lots, tenderAmount, tenderCurrency = "UAH", 
       <div className="prozorro-lot-strip__head">
         <div className="prozorro-lot-strip__title">
           <Layers3 size={16} />
-          <span>Багатолотна закупівля — <b>{lots.length} лоти</b></span>
+          <span>Багатолотна закупівля — <b>{availableLots.length} лоти</b></span>
         </div>
         <small className="prozorro-lot-strip__hint">Оберіть лот для перегляду специфічних параметрів:</small>
       </div>
 
       <div className="lot-tab-bar">
-        {lots.map((lot, idx) => {
-          const isSelected = lot.id === selectedLotId;
+        {availableLots.map((lot, idx) => {
+          const isSelected = lot.id === activeLot?.id;
           const shortName = cleanLotName(lot.title, idx);
           return (
             <button
@@ -103,7 +102,7 @@ export function ProzorroLotViewer({ lots, tenderAmount, tenderCurrency = "UAH", 
         <div className="expert-lot-tip">
           <Info size={13} />
           <span>
-            <b>Експертна порада:</b> У цій багатолотній закупівлі ви можете подавати цінову пропозицію <b>виключно на Лот #{activeIndex + 1}</b> без зобов’язання брати участь у решті {lots.length - 1} лотах.
+            <b>Експертна порада:</b> У цій багатолотній закупівлі ви можете подавати цінову пропозицію <b>виключно на Лот #{activeIndex + 1}</b> без зобов’язання брати участь у решті {availableLots.length - 1} лотах.
           </span>
         </div>
       )}

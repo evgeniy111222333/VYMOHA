@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert, ShieldCheck, TrendingDown, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, ChevronDown, Coins, ExternalLink, FileCheck2, FileText, LockKeyhole, MessageSquareText, ScanSearch, ShieldAlert, ShieldCheck, TrendingDown } from "lucide-react";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
-import { formatSignals, SIGNAL_UNIT } from "@/src/domain/billing/presentation";
+import { formatSignals } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
 import { ScoreExplanation } from "./ScoreExplanation";
 import { TenderDocumentList } from "./TenderDocumentList";
@@ -16,18 +16,6 @@ import { TenderRevisionsDiff } from "./TenderRevisionsDiff";
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" };
 const statusLabels = { met: "підтверджено", missing: "відсутнє", review: "перевірити", unknown: "невідомо" };
-
-const statusDisplay: Record<string, { label: string; badge: string }> = {
-  "active.tendering": { label: "Прийом пропозицій", badge: "status-pill--active" },
-  "active.pre-qualification": { label: "Прекваліфікація", badge: "status-pill--active" },
-  "active.pre-qualification.stand-still": { label: "Прекваліфікація (Оскарження)", badge: "status-pill--warning" },
-  "active.auction": { label: "Аукціон", badge: "status-pill--active" },
-  "active.qualification": { label: "Кваліфікація переможця", badge: "status-pill--warning" },
-  "active.awarded": { label: "Укладення договору", badge: "status-pill--warning" },
-  "complete": { label: "Завершено", badge: "status-pill--muted" },
-  "cancelled": { label: "Скасовано", badge: "status-pill--danger" },
-  "unsuccessful": { label: "Не відбувся", badge: "status-pill--danger" },
-};
 
 type AnalysisResultProps = {
   analysis: TenderAnalysis;
@@ -48,7 +36,6 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
   const isQuick = (analysis.analysisTier ?? "quick") === "quick";
   const showUpsell = isQuick && analysis.verdict !== "no-go";
 
-  const statusInfo = statusDisplay[analysis.tender.status] || { label: analysis.tender.status || "Очікує", badge: "status-pill--muted" };
   const vatText = analysis.tender.vatIncluded === true ? "(з ПДВ)" : analysis.tender.vatIncluded === false ? "(без ПДВ)" : "";
 
   const minStepFormatted = analysis.tender.minimalStepAmount
@@ -142,7 +129,6 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
 
       <ProzorroLotViewer
         lots={analysis.tender.lots}
-        tenderAmount={analysis.tender.amount}
         tenderCurrency={analysis.tender.currency}
         analysisTier={analysis.analysisTier}
       />
@@ -249,8 +235,8 @@ function UpgradeCta({
         <li><MessageSquareText size={16} /> Сформулює 5–8 питань замовнику, готові до вставки в Prozorro</li>
       </ul>
       <div className="upgrade-cta__price">
-        <span><b>12 {SIGNAL_UNIT}ів</b> · 1 поглиблений аналіз</span>
-        <span>≈ {Math.round(14900 / 12)} грн / аналіз при пакеті «Спроба»</span>
+        <span><b>{formatSignals(12)}</b> · 1 поглиблений аналіз</span>
+        <span>Пакет «Спроба» — 30 сигналів за 149 ₴ одноразово</span>
       </div>
       <a className="button button--primary button--full" href={ctaHref}>
         <CtaIcon size={17} /> {ctaLabel} <ArrowUpRight size={16} />

@@ -1,4 +1,4 @@
-const PASSWORD_ITERATIONS = 310_000;
+const PASSWORD_ITERATIONS = 100_000;
 const HASH_BYTES = 32;
 
 export async function hashPassword(password: string): Promise<{ hash: string; salt: string }> {

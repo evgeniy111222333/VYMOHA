@@ -263,3 +263,30 @@ export const aiUsage = sqliteTable(
     index("idx_ai_usage_user_created").on(table.userId, table.createdAt),
   ],
 );
+
+export const analysisTelemetry = sqliteTable(
+  "analysis_telemetry",
+  {
+    id: text("id").primaryKey(),
+    analysisId: text("analysis_id").notNull(),
+    userHash: text("user_hash").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    tier: text("tier").notNull(),
+    status: text("status").notNull(),
+    errorCode: text("error_code"),
+    durationMs: integer("duration_ms").notNull(),
+    documentCount: integer("document_count").notNull().default(0),
+    documentsRead: integer("documents_read").notNull().default(0),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costMicrousd: integer("cost_microusd").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (table) => [
+    index("idx_analysis_telemetry_created").on(table.createdAt),
+    index("idx_analysis_telemetry_expires").on(table.expiresAt),
+  ],
+);

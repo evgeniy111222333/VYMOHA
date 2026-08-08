@@ -23,9 +23,15 @@ export class HttpError extends Error {
 }
 
 export function apiError(error: unknown): Response {
-  if (!(error instanceof HttpError) && !(error instanceof SecurityError)) console.error("Unhandled API error", error);
+  const isSyntaxError = error instanceof SyntaxError;
+  if (!(error instanceof HttpError) && !(error instanceof SecurityError) && !isSyntaxError) {
+    console.error("Unhandled API error", error);
+  }
+  
   if (error instanceof HttpError) return Response.json({ error: { message: error.message, details: error.details } }, { status: error.status });
   if (error instanceof SecurityError) return Response.json({ error: { message: error.message } }, { status: 403 });
+  if (isSyntaxError) return Response.json({ error: { message: "Некоректний формат даних (очікувався правильний JSON)." } }, { status: 400 });
+
   const message = error instanceof Error ? error.message : "Неочікувана помилка.";
   const safeMessage = /UA-\d{4}|форматі|не знайдено|джерело даних/i.test(message)
     ? message

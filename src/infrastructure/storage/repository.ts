@@ -60,6 +60,66 @@ export type PublicTenderSummary = {
   updatedAt: string;
 };
 
+export type AnalysisTelemetry = {
+  id: string;
+  analysisId: string;
+  userHash: string;
+  provider: "gemini" | "openai";
+  model: string;
+  tier: string;
+  status: "completed" | "failed";
+  errorCode: string | null;
+  durationMs: number;
+  documentCount: number;
+  documentsRead: number;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  costMicrousd: number;
+  createdAt: string;
+  expiresAt: number;
+};
+
+const ANALYSIS_TELEMETRY_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+export async function recordAnalysisTelemetry(input: Omit<AnalysisTelemetry, "id" | "createdAt" | "expiresAt">): Promise<void> {
+  const database = await ensureDatabase();
+  const now = new Date();
+  const nowSeconds = Math.floor(now.getTime() / 1000);
+  const expiresAt = nowSeconds + ANALYSIS_TELEMETRY_TTL_SECONDS;
+  await database.batch([
+    database.prepare("DELETE FROM analysis_telemetry WHERE expires_at <= ?").bind(nowSeconds),
+    database.prepare(`INSERT INTO analysis_telemetry (
+      id, analysis_id, user_hash, provider, model, tier, status, error_code,
+      duration_ms, document_count, documents_read, input_tokens, cached_input_tokens,
+      output_tokens, cost_microusd, created_at, expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+      crypto.randomUUID(), input.analysisId, input.userHash, input.provider, input.model,
+      input.tier, input.status, input.errorCode, input.durationMs, input.documentCount,
+      input.documentsRead, input.inputTokens, input.cachedInputTokens, input.outputTokens,
+      input.costMicrousd, now.toISOString(), expiresAt,
+    ),
+  ]);
+}
+
+export async function listAnalysisTelemetry(limit = 100): Promise<AnalysisTelemetry[]> {
+  const database = await ensureDatabase();
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const result = await database.prepare(`SELECT id, analysis_id, user_hash, provider, model, tier, status,
+    error_code, duration_ms, document_count, documents_read, input_tokens, cached_input_tokens,
+    output_tokens, cost_microusd, created_at, expires_at
+    FROM analysis_telemetry WHERE expires_at > ? ORDER BY created_at DESC LIMIT ?`)
+    .bind(nowSeconds, Math.min(Math.max(limit, 1), 250)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    id: String(row.id), analysisId: String(row.analysis_id), userHash: String(row.user_hash),
+    provider: row.provider === "gemini" ? "gemini" : "openai", model: String(row.model), tier: String(row.tier),
+    status: row.status === "completed" ? "completed" : "failed", errorCode: row.error_code ? String(row.error_code) : null,
+    durationMs: Number(row.duration_ms), documentCount: Number(row.document_count), documentsRead: Number(row.documents_read),
+    inputTokens: Number(row.input_tokens), cachedInputTokens: Number(row.cached_input_tokens), outputTokens: Number(row.output_tokens),
+    costMicrousd: Number(row.cost_microusd), createdAt: String(row.created_at), expiresAt: Number(row.expires_at),
+  }));
+}
+
 export async function getCompanyProfile(userId: string): Promise<(CompanyProfile & { region?: string }) | null> {
   const database = await ensureDatabase();
   const row = await database.prepare(`SELECT name, edrpou, region, cpv_codes_json, capabilities_json, certifications_json

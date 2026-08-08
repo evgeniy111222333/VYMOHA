@@ -5,48 +5,6 @@ import type { CompanyProfile, TenderAnalysis } from "@/src/domain/tender/types";
 import { buildTenderPrompt } from "./prompt";
 import { TENDER_ANALYSIS_SCHEMA, type EnhancedTenderPayload } from "./tender-schema";
 
-// ─── Debug log ring buffer ───────────────────────────────────────────────────
-export type AnalysisDebugEntry = {
-  id: string;
-  timestamp: string;
-  provider: "gemini" | "openai";
-  model: string;
-  tier: string;
-  promptPreview: string;
-  promptLengthChars: number;
-  files: Array<{
-    title: string;
-    url?: string;
-    format?: string;
-    downloadedBytes: number | null;
-    mimeType: string | null;
-    downloadOk: boolean;
-  }>;
-  requestBodySizeBytes: number;
-  responseStatus: number | null;
-  responseError: string | null;
-  durationMs: number | null;
-};
-
-const DEBUG_LOG_MAX = 50;
-const GLOBAL_KEY = "__vymoha_analysis_debug_log__";
-
-function getDebugLog(): AnalysisDebugEntry[] {
-  const g = globalThis as Record<string, unknown>;
-  if (!Array.isArray(g[GLOBAL_KEY])) g[GLOBAL_KEY] = [];
-  return g[GLOBAL_KEY] as AnalysisDebugEntry[];
-}
-
-function pushDebugEntry(entry: AnalysisDebugEntry) {
-  const log = getDebugLog();
-  log.push(entry);
-  if (log.length > DEBUG_LOG_MAX) log.shift();
-}
-
-export function getAnalysisDebugLog(): AnalysisDebugEntry[] {
-  return [...getDebugLog()].reverse(); // newest first
-}
-
 type OpenAIResponse = {
   output?: Array<{ content?: Array<{ type?: string; text?: string; refusal?: string }> }>;
   usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number } };
@@ -155,7 +113,7 @@ function extractTextFromDocx(buffer: ArrayBuffer): string | null {
       }
     }
   } catch (err) {
-    console.warn("[docx] Failed to extract text:", err);
+    console.warn("[docx] Failed to extract text", { errorType: err instanceof Error ? err.name : "unknown" });
   }
   return null;
 }
@@ -164,12 +122,12 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
     if (!res.ok) {
-      console.warn(`[download] FAILED ${res.status} ${res.statusText} url=${url}`);
+      console.warn("[download] Failed", { status: res.status });
       return null;
     }
     const buf = await res.arrayBuffer();
     if (buf.byteLength === 0 || buf.byteLength > MAX_INLINE_FILE_BYTES) {
-      console.warn(`[download] SKIPPED size=${buf.byteLength} url=${url}`);
+      console.warn("[download] Skipped", { byteLength: buf.byteLength });
       return null;
     }
 
@@ -178,7 +136,7 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
     const isZip = head.length >= 4 && ZIP_MAGIC.every((b, i) => b === head[i]);
 
     if (isPdf) {
-      console.log(`[download] PDF OK size=${buf.byteLength} url=${url}`);
+      console.log("[download] PDF ready", { byteLength: buf.byteLength });
       let binary = "";
       const bytes = new Uint8Array(buf);
       for (let i = 0; i < bytes.length; i += 0x8000) {
@@ -195,7 +153,7 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
     if (isZip || title.toLowerCase().endsWith(".docx")) {
       const extractedText = extractTextFromDocx(buf);
       if (extractedText && extractedText.length > 0) {
-        console.log(`[download] DOCX OK extracted ${extractedText.length} chars size=${buf.byteLength} url=${url}`);
+        console.log("[download] DOCX ready", { byteLength: buf.byteLength, extractedCharacters: extractedText.length });
         return {
           kind: "text",
           mimeType: "text/plain",
@@ -203,14 +161,14 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
           byteLength: buf.byteLength,
         };
       }
-      console.warn(`[download] DOCX text extraction yielded empty string for url=${url}`);
+      console.warn("[download] DOCX extraction yielded no text");
       return null;
     }
 
     // Try text decoding for text/csv files
     const text = new TextDecoder("utf-8", { fatal: false }).decode(buf).trim();
     if (text.length > 0 && !/[\x00-\x08\x0E-\x1F]/.test(text.slice(0, 200))) {
-      console.log(`[download] TEXT OK length=${text.length} size=${buf.byteLength} url=${url}`);
+      console.log("[download] Text ready", { byteLength: buf.byteLength, extractedCharacters: text.length });
       return {
         kind: "text",
         mimeType: "text/plain",
@@ -219,10 +177,10 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
       };
     }
 
-    console.warn(`[download] UNKNOWN_FORMAT size=${buf.byteLength} url=${url}`);
+    console.warn("[download] Unsupported format", { byteLength: buf.byteLength });
     return null;
   } catch (err) {
-    console.warn(`[download] ERROR url=${url}`, err);
+    console.warn("[download] Failed", { errorType: err instanceof Error ? err.name : "unknown" });
     return null;
   }
 }
@@ -283,9 +241,7 @@ async function callOpenAI(input: {
   });
   const payload = await response.json() as OpenAIResponse;
   if (!response.ok) {
-    const errorBody = JSON.stringify(payload).slice(0, 800);
     console.error(`[enhanceAnalysis:openai] ${response.status} ${response.statusText} model=${model} tier=${tier}`);
-    console.error(`[enhanceAnalysis:openai] body: ${errorBody}`);
     throw new OpenAIAnalysisError(payload.error?.message ? "OpenAI відхилив запит аналізу." : undefined);
   }
   const output = payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
@@ -307,29 +263,16 @@ async function callGemini(input: {
 }): Promise<{ analysis: TenderAnalysis; usage: AIUsage }> {
   const { expert, files, prompt, model, apiKey, analysis, company, tier } = input;
   const analysisId = analysis.id ?? "unknown";
-  const startTime = Date.now();
 
-  console.log(`[gemini:${analysisId}] ▶ Starting analysis model=${model} tier=${tier} expert=${expert} files=${files.length}`);
-  files.forEach((f, i) => console.log(`[gemini:${analysisId}]   file[${i}] title="${f.title}" format=${f.format ?? "?"} url=${f.url ?? "none"}`));
+  console.log(`[gemini:${analysisId}] Starting analysis`, { model, tier, fileCount: files.length });
 
   const processedFiles = await Promise.all(files.map(async (document) => {
     if (!document.url) return null;
     return downloadGeminiDocument(document.url, document.title);
   }));
 
-  const fileDebugInfo = files.map((f, i) => {
-    const dl = processedFiles[i];
-    return {
-      title: f.title,
-      url: f.url,
-      format: f.format,
-      downloadedBytes: dl?.byteLength ?? null,
-      mimeType: dl?.mimeType ?? null,
-      downloadOk: dl !== null,
-    };
-  });
   const downloadedCount = processedFiles.filter(Boolean).length;
-  console.log(`[gemini:${analysisId}]   downloaded ${downloadedCount}/${files.length} files`);
+  console.log(`[gemini:${analysisId}] Documents prepared`, { downloadedCount, fileCount: files.length });
 
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
   processedFiles.forEach((file, index) => {
@@ -370,22 +313,7 @@ async function callGemini(input: {
     };
 
     const bodyJson = JSON.stringify(body);
-    console.log(`[gemini:${analysisId}]   [try ${modelIndex + 1}/${modelsToTry.length}] model=${currentModel} prompt length=${prompt.length} chars, request body=${bodyJson.length} bytes, parts=${parts.length}`);
-
-    const debugEntry: AnalysisDebugEntry = {
-      id: analysisId,
-      timestamp: new Date().toISOString(),
-      provider: "gemini",
-      model: currentModel,
-      tier,
-      promptPreview: prompt.slice(0, 1000),
-      promptLengthChars: prompt.length,
-      files: fileDebugInfo,
-      requestBodySizeBytes: bodyJson.length,
-      responseStatus: null,
-      responseError: null,
-      durationMs: null,
-    };
+    console.log(`[gemini:${analysisId}] Provider attempt`, { attempt: modelIndex + 1, attempts: modelsToTry.length, model: currentModel, partCount: parts.length });
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(currentModel)}:generateContent`;
     const attemptStartTime = Date.now();
@@ -401,41 +329,31 @@ async function callGemini(input: {
       });
       payload = (await response.json()) as GeminiResponse;
     } catch (err) {
-      console.error(`[gemini:${analysisId}] ✗ Network error on model=${currentModel}`, err);
-      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`[gemini:${analysisId}] Provider network error`, { model: currentModel, errorType: err instanceof Error ? err.name : "unknown" });
+      lastError = new OpenAIAnalysisError("AI-провайдер тимчасово недоступний.");
       continue;
     }
 
     const durationMs = Date.now() - attemptStartTime;
-    debugEntry.responseStatus = response.status;
-    debugEntry.durationMs = durationMs;
-
     if (!response.ok) {
-      const errorBody = JSON.stringify(payload).slice(0, 800);
-      debugEntry.responseError = errorBody;
-      pushDebugEntry(debugEntry);
-
-      const isQuotaError = response.status === 429 || errorBody.includes("RESOURCE_EXHAUSTED") || errorBody.includes("Quota exceeded");
+      const isQuotaError = response.status === 429 || payload.error?.status === "RESOURCE_EXHAUSTED" || payload.error?.code === 429;
       if (isQuotaError && modelIndex < modelsToTry.length - 1) {
         const nextModel = modelsToTry[modelIndex + 1];
-        console.warn(`[gemini:${analysisId}] ⚠️ 429 Quota error on model=${currentModel}. Falling back to next model=${nextModel}...`);
+        console.warn(`[gemini:${analysisId}] Provider quota fallback`, { model: currentModel, nextModel, status: response.status });
         lastError = new OpenAIAnalysisError(`Квоту для ${currentModel} вичерпано. Технічна проблема з AI-сервісом.`);
         continue;
       }
 
-      console.error(`[gemini:${analysisId}] ✗ ${response.status} ${response.statusText} model=${currentModel} tier=${tier} duration=${durationMs}ms`);
-      console.error(`[gemini:${analysisId}]   error body: ${errorBody}`);
-      throw new OpenAIAnalysisError(payload.error?.message ?? "Технічна проблема з AI-сервісом. Спробуйте пізніше.");
+      console.error(`[gemini:${analysisId}] Provider response error`, { model: currentModel, tier, status: response.status, durationMs });
+      throw new OpenAIAnalysisError("Технічна проблема з AI-сервісом. Спробуйте пізніше.");
     }
 
     const candidate = payload.candidates?.[0];
     const finishReason = candidate?.finishReason;
-    console.log(`[gemini:${analysisId}] ✓ ${response.status} model=${currentModel} finishReason=${finishReason ?? "?"} duration=${durationMs}ms`);
+    console.log(`[gemini:${analysisId}] Provider response`, { model: currentModel, status: response.status, finishReason: finishReason ?? "unknown", durationMs });
     if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
       console.error(`[gemini:${analysisId}]   unexpected finishReason=${finishReason} model=${currentModel}`);
     }
-
-    pushDebugEntry(debugEntry);
 
     const responseParts = candidate?.content?.parts ?? [];
     const output = responseParts
@@ -445,10 +363,7 @@ async function callGemini(input: {
       .trim();
 
     if (!output) {
-      const thought = responseParts.filter((p) => (p as { thought?: boolean }).thought === true).map((p) => p.text ?? "").join(" ").trim();
-      lastError = new OpenAIAnalysisError(
-        `Gemini не повернув фінальну відповідь (finishReason=${finishReason ?? "unknown"}${thought ? `, thought="${thought.slice(0, 200)}"` : ""}).`,
-      );
+      lastError = new OpenAIAnalysisError("AI-провайдер не повернув придатний результат аналізу.");
       if (modelIndex < modelsToTry.length - 1) {
         console.warn(`[gemini:${analysisId}] ⚠️ Output empty or thinking truncated on model=${currentModel}. Retrying with next model=${modelsToTry[modelIndex + 1]}...`);
         continue;
@@ -460,8 +375,8 @@ async function callGemini(input: {
       const parsed = parseStructuredOutput(output);
       return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
     } catch (parseErr) {
-      console.warn(`[gemini:${analysisId}] ⚠️ JSON parse error on model=${currentModel} finishReason=${finishReason}:`, parseErr);
-      lastError = parseErr instanceof Error ? parseErr : new Error(String(parseErr));
+      console.warn(`[gemini:${analysisId}] Structured response parsing failed`, { model: currentModel, finishReason: finishReason ?? "unknown", errorType: parseErr instanceof Error ? parseErr.name : "unknown" });
+      lastError = new OpenAIAnalysisError("AI-провайдер повернув неповний структурований звіт.");
       if (modelIndex < modelsToTry.length - 1) {
         console.warn(`[gemini:${analysisId}] ⚠️ Retrying with fallback model=${modelsToTry[modelIndex + 1]} due to truncated JSON...`);
         continue;

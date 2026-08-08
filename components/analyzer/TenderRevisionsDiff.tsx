@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertOctagon, AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Clock, History, Info, Layers, RefreshCw } from "lucide-react";
+import { AlertOctagon, AlertTriangle, ArrowRight, ChevronDown, Clock, History, Info } from "lucide-react";
 import type { TenderRevisionsAnalysis } from "@/src/domain/tender/types";
 
 type TenderRevisionsDiffProps = {

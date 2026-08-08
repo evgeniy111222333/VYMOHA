@@ -6,7 +6,7 @@ import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { fetchTender } from "@/src/infrastructure/prozorro/client";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { completeAnalysisUsage, refundAnalysisCredits, reserveAnalysisCredits } from "@/src/infrastructure/storage/billing";
-import { consumeRateLimit, getCompanyProfile, saveAnalysis, upsertPublicTenderSummary, writeAuditEvent } from "@/src/infrastructure/storage/repository";
+import { consumeRateLimit, getCompanyProfile, recordAnalysisTelemetry, saveAnalysis, upsertPublicTenderSummary, writeAuditEvent } from "@/src/infrastructure/storage/repository";
 import { apiError, HttpError, requestUser } from "@/src/lib/http";
 import { assertBodySize, assertSameOrigin, clientAddress, sha256 } from "@/src/lib/security";
 import { analyzeRequestSchema } from "@/src/lib/validation";
@@ -28,6 +28,22 @@ function pickAnalyzeRateLimit(tier: AnalysisTier, userId: string | null, ipHash:
   return { bucket: `analyze:paid:user:${userId ?? ipHash}`, ...RATE_LIMITS.paid };
 }
 
+function analysisProvider(model: string): "gemini" | "openai" {
+  return model.toLowerCase().startsWith("gemini-") ? "gemini" : "openai";
+}
+
+function telemetryErrorCode(error: unknown): string {
+  return error instanceof OpenAIAnalysisError ? "provider_error" : "unexpected_error";
+}
+
+async function recordAnalysisTelemetrySafely(input: Parameters<typeof recordAnalysisTelemetry>[0]): Promise<void> {
+  try {
+    await recordAnalysisTelemetry(input);
+  } catch (error) {
+    console.error("[analysis-telemetry] Write failed", { errorType: error instanceof Error ? error.name : "unknown" });
+  }
+}
+
 export async function POST(request: Request): Promise<Response> {
   try {
     assertSameOrigin(request);
@@ -37,9 +53,7 @@ export async function POST(request: Request): Promise<Response> {
     try {
       rawBody = JSON.parse(rawText);
     } catch (parseError) {
-      console.error(`[analyze] JSON parse error: ${parseError}`);
-      console.error(`[analyze] raw body (first 500 chars): ${rawText.slice(0, 500)}`);
-      console.error(`[analyze] raw body hex (first 40 bytes): ${[...rawText.slice(0, 40)].map(c => c.charCodeAt(0).toString(16).padStart(4, "0")).join(" ")}`);
+      console.error("[analyze] Invalid JSON", { errorType: parseError instanceof Error ? parseError.name : "unknown" });
       return Response.json({ error: { message: "Невалідний JSON у тілі запиту." } }, { status: 400 });
     }
     const parsed = analyzeRequestSchema.safeParse(rawBody);
@@ -70,17 +84,32 @@ export async function POST(request: Request): Promise<Response> {
       const model = requestedTier === "expert"
         ? env.OPENAI_MODEL_EXPERT ?? "gpt-5.6-sol"
         : env.OPENAI_MODEL_STANDARD ?? "gpt-5.6-terra";
+      const userHash = await sha256(user.id);
       creditBalance = await reserveAnalysisCredits({
         userId: user.id, analysisId: analysis.id, tier: requestedTier, model, credits: tier.credits,
       });
+      const analysisStartedAt = Date.now();
       try {
         const enhanced = await enhanceAnalysis({
-          analysis, company, apiKey: env.OPENAI_API_KEY, safetyIdentifier: await sha256(user.id), tier: requestedTier, model,
+          analysis, company, apiKey: env.OPENAI_API_KEY, safetyIdentifier: userHash, tier: requestedTier, model,
         });
         analysis = { ...enhanced.analysis, creditsCharged: tier.credits };
         await completeAnalysisUsage({ analysisId: analysis.id, ...enhanced.usage });
+        await recordAnalysisTelemetrySafely({
+          analysisId: analysis.id, userHash, provider: analysisProvider(model), model, tier: requestedTier, status: "completed", errorCode: null,
+          durationMs: Date.now() - analysisStartedAt, documentCount: analysis.tender.documents.length,
+          documentsRead: analysis.documentCoverage?.filter((document) => document.status === "read").length ?? 0,
+          inputTokens: enhanced.usage.inputTokens, cachedInputTokens: enhanced.usage.cachedInputTokens,
+          outputTokens: enhanced.usage.outputTokens, costMicrousd: enhanced.usage.costMicrousd,
+        });
       } catch (error) {
         await refundAnalysisCredits(user.id, analysis.id, error instanceof Error ? error.name : "unknown");
+        await recordAnalysisTelemetrySafely({
+          analysisId: analysis.id, userHash, provider: analysisProvider(model), model, tier: requestedTier, status: "failed",
+          errorCode: telemetryErrorCode(error), durationMs: Date.now() - analysisStartedAt,
+          documentCount: analysis.tender.documents.length, documentsRead: 0,
+          inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, costMicrousd: 0,
+        });
         if (error instanceof OpenAIAnalysisError) {
           const msg = error.message.includes("Баланс") ? error.message : `${error.message} Баланс не змінився — спробуйте пізніше.`;
           throw new HttpError(502, msg);
@@ -91,7 +120,7 @@ export async function POST(request: Request): Promise<Response> {
 
     if (user) await saveAnalysis(user.id, analysis);
     if (requestedTier === "quick") {
-      try { await upsertPublicTenderSummary({ analysis }); } catch (error) { console.error("public summary upsert failed", error); }
+      try { await upsertPublicTenderSummary({ analysis }); } catch (error) { console.error("[public-summary] Write failed", { errorType: error instanceof Error ? error.name : "unknown" }); }
     }
     await writeAuditEvent({
       userId: user?.id, action: "analysis.created", resourceType: "tender",

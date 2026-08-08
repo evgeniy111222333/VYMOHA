@@ -1,4 +1,4 @@
-import { BarChart3, Building2, Coins, FileArchive, LayoutDashboard, LogOut, Radar, SearchCheck, Settings, ShieldCheck } from "lucide-react";
+import { Activity, BarChart3, Building2, Coins, FileArchive, LayoutDashboard, LogOut, Radar, SearchCheck, Settings, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import type { AuthUser } from "@/src/auth/types";
 import { formatSignals } from "@/src/domain/billing/presentation";
@@ -20,7 +20,7 @@ export function DashboardShell({ user, account, children }: { user: AuthUser; ac
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
         <div className="dashboard-sidebar__top"><Logo /><span className="dashboard-sidebar__badge">beta</span></div>
-        <nav aria-label="Навігація кабінету">{links.map((link) => <a key={link.href} href={link.href}><link.icon size={18} />{link.label}</a>)}{account.role === "admin" && <a href="/dashboard/admin" className="dashboard-admin-link"><ShieldCheck size={18} />Адміністратор</a>}</nav>
+        <nav aria-label="Навігація кабінету">{links.map((link) => <a key={link.href} href={link.href}><link.icon size={18} />{link.label}</a>)}{account.role === "admin" && <><a href="/dashboard/admin" className="dashboard-admin-link"><ShieldCheck size={18} />Адміністратор</a><a href="/dashboard/admin/diagnostics" className="dashboard-admin-link"><Activity size={18} />Діагностика</a></>}</nav>
         <div className="dashboard-sidebar__bottom">
           <a href="/dashboard/settings"><Settings size={18} />Налаштування</a>
           <form action="/api/auth/sign-out" method="post"><button type="submit"><LogOut size={18} />Вийти</button></form>

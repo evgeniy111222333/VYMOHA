@@ -55,6 +55,7 @@ describe("Gemini enhancer DOCX handling", () => {
       const base = analyzeTender(tenderFixture(), undefined, new Date("2026-08-01T12:00:00+03:00"));
       base.tender.documents = [
         {
+          id: "test-docx",
           title: "Тендерна документація.docx",
           url: "https://public-docs.prozorro.gov.ua/get/fake-docx-id",
           format: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

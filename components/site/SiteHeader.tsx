@@ -1,4 +1,5 @@
 import { ArrowUpRight, LayoutDashboard, User } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { getAuthUser } from "@/app/auth";
 import { Logo } from "@/components/brand/Logo";
@@ -20,7 +21,7 @@ export async function SiteHeader() {
             <Link href="/dashboard" className="header-user-badge" prefetch={false} title={`Акаунт: ${user.email}`}>
               <span className="header-user-badge__icon">
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt="" />
+                  <Image src={user.avatarUrl} alt="" width={24} height={24} unoptimized />
                 ) : (
                   <User size={13} />
                 )}

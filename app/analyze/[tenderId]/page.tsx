@@ -161,7 +161,7 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
           </div>
           <div className="public-analyze__cta-card">
             <small>12 сигналів</small>
-            <strong>≈ 1 240 грн / аналіз</strong>
+            <strong>Пакет «Спроба» — 149 ₴</strong>
             <a className="button button--primary button--full" href={deepCtaHref}>
               {user ? <ScanSearch size={17} /> : <LockKeyhole size={17} />} {deepCtaLabel}
             </a>
