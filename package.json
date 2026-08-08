@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "build": "vinext build",
+    "build": "vinext build && node -e \"fs.rmSync('dist/client/.vite', { recursive: true, force: true })\"",
     "start": "vinext start",
     "test": "vitest --config vitest.config.ts run",
     "test:render": "npm run build && node --test tests/rendered-html.test.mjs",
