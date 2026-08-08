@@ -14,10 +14,12 @@ export async function POST(request: Request): Promise<Response> {
     if (!parsed.success) throw new HttpError(422, "Вкажіть пошту або номер і пароль.");
     
     const ipHash = await sha256(clientAddress(request));
-    if (!await consumeRateLimit(`auth:signin:${ipHash}`, 30, 900)) throw new HttpError(429, "Забагато спроб з цієї мережі. Спробуйте через 15 хвилин.");
+    const ipLimit = await consumeRateLimit(`auth:signin:${ipHash}`, 50, 900);
+    if (!ipLimit.allowed) throw new HttpError(429, "Забагато спроб з цієї мережі. Спробуйте через 15 хвилин.", undefined, { "Retry-After": String(Math.max(1, ipLimit.resetAt - Math.floor(Date.now() / 1000))) });
     
     const accountHash = await sha256(parsed.data.identifier.toLowerCase());
-    if (!await consumeRateLimit(`auth:signin:account:${accountHash}`, 5, 900)) throw new HttpError(429, "Забагато спроб входу. Спробуйте через 15 хвилин.");
+    const accountLimit = await consumeRateLimit(`auth:signin:account:${accountHash}`, 5, 900);
+    if (!accountLimit.allowed) throw new HttpError(429, "Забагато спроб входу. Спробуйте через 15 хвилин.", undefined, { "Retry-After": String(Math.max(1, accountLimit.resetAt - Math.floor(Date.now() / 1000))) });
     
     const userId = await authenticatePassword(parsed.data.identifier, parsed.data.password);
     const token = await createSession(userId, request);

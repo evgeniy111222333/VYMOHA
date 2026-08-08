@@ -290,7 +290,7 @@ export async function updateWatchVersion(watchId: string, modified: string | nul
   await database.prepare("UPDATE watches SET last_modified = ? WHERE id = ?").bind(modified, watchId).run();
 }
 
-export async function consumeRateLimit(bucketKey: string, limit: number, windowSeconds: number): Promise<boolean> {
+export async function consumeRateLimit(bucketKey: string, limit: number, windowSeconds: number): Promise<{ allowed: boolean; resetAt: number }> {
   const database = await ensureDatabase();
   const now = Math.floor(Date.now() / 1000);
   const resetAt = now + windowSeconds;
@@ -300,8 +300,11 @@ export async function consumeRateLimit(bucketKey: string, limit: number, windowS
       reset_at = CASE WHEN rate_limits.reset_at <= ? THEN ? ELSE rate_limits.reset_at END`).bind(
     bucketKey, resetAt, now, now, resetAt,
   ).run();
-  const row = await database.prepare("SELECT count FROM rate_limits WHERE bucket_key = ?").bind(bucketKey).first<{ count: number }>();
-  return Boolean(row && row.count <= limit);
+  const row = await database.prepare("SELECT count, reset_at FROM rate_limits WHERE bucket_key = ?").bind(bucketKey).first<{ count: number; reset_at: number }>();
+  return { 
+    allowed: Boolean(row && row.count <= limit), 
+    resetAt: row?.reset_at ?? resetAt 
+  };
 }
 
 export async function writeAuditEvent(input: {

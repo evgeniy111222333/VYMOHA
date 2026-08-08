@@ -14,10 +14,12 @@ export async function POST(request: Request): Promise<Response> {
     if (!parsed.success) throw new HttpError(422, parsed.error.issues[0]?.message ?? "Перевірте введені дані.");
     
     const ipHash = await sha256(clientAddress(request));
-    if (!await consumeRateLimit(`auth:register:${ipHash}`, 5, 3_600)) throw new HttpError(429, "Забагато спроб реєстрації. Спробуйте пізніше.");
+    const ipLimit = await consumeRateLimit(`auth:register:${ipHash}`, 20, 3_600);
+    if (!ipLimit.allowed) throw new HttpError(429, "Забагато спроб реєстрації. Спробуйте пізніше.", undefined, { "Retry-After": String(Math.max(1, ipLimit.resetAt - Math.floor(Date.now() / 1000))) });
     
     const accountHash = await sha256(parsed.data.email.toLowerCase());
-    if (!await consumeRateLimit(`auth:register:account:${accountHash}`, 5, 3_600)) throw new HttpError(429, "Забагато спроб. Спробуйте пізніше.");
+    const accountLimit = await consumeRateLimit(`auth:register:account:${accountHash}`, 5, 3_600);
+    if (!accountLimit.allowed) throw new HttpError(429, "Забагато спроб. Спробуйте пізніше.", undefined, { "Retry-After": String(Math.max(1, accountLimit.resetAt - Math.floor(Date.now() / 1000))) });
 
     const legacyUserId = request.headers.get("oai-authenticated-user-email")?.toLowerCase() === parsed.data.email
       ? request.headers.get("oai-authenticated-user-id") ?? undefined

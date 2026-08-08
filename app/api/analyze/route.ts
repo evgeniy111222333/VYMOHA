@@ -66,8 +66,8 @@ export async function POST(request: Request): Promise<Response> {
     const tier = getAnalysisTier(requestedTier);
     const ipHash = await sha256(clientAddress(request));
     const rate = pickAnalyzeRateLimit(requestedTier, user?.id ?? null, ipHash);
-    const allowed = await consumeRateLimit(rate.bucket, rate.limit, rate.window);
-    if (!allowed) return Response.json({ error: { message: rate.message } }, { status: 429 });
+    const limit = await consumeRateLimit(rate.bucket, rate.limit, rate.window);
+    if (!limit.allowed) return Response.json({ error: { message: rate.message } }, { status: 429, headers: { "Retry-After": String(Math.max(1, limit.resetAt - Math.floor(Date.now() / 1000))) } });
 
     const account = user ? await ensureUserAccount(user) : null;
     if (account?.status === "suspended") throw new HttpError(403, "Обліковий запис призупинено. Зверніться до адміністратора.");

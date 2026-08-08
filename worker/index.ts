@@ -36,6 +36,11 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+      return Response.redirect(url.href, 301);
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
@@ -58,6 +63,7 @@ const worker = {
 function withSecurityHeaders(response: Response): Response {
   const secured = new Response(response.body, response);
   const headers = secured.headers;
+  headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-Frame-Options", "DENY");
@@ -69,7 +75,7 @@ function withSecurityHeaders(response: Response): Response {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://public-api.prozorro.gov.ua https://api.openai.com",
+    "connect-src 'self' https://public-api.prozorro.gov.ua",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

@@ -16,7 +16,12 @@ export async function requireRequestUser(request: Request): Promise<RequestUser>
 }
 
 export class HttpError extends Error {
-  constructor(public readonly status: number, message: string, public readonly details?: unknown) {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly details?: unknown,
+    public readonly headers?: HeadersInit
+  ) {
     super(message);
     this.name = "HttpError";
   }
@@ -28,7 +33,9 @@ export function apiError(error: unknown): Response {
     console.error("Unhandled API error", error);
   }
   
-  if (error instanceof HttpError) return Response.json({ error: { message: error.message, details: error.details } }, { status: error.status });
+  if (error instanceof HttpError) {
+    return Response.json({ error: { message: error.message, details: error.details } }, { status: error.status, headers: error.headers });
+  }
   if (error instanceof SecurityError) return Response.json({ error: { message: error.message } }, { status: 403 });
   if (isSyntaxError) return Response.json({ error: { message: "Некоректний формат даних (очікувався правильний JSON)." } }, { status: 400 });
 
