@@ -36,7 +36,7 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.protocol === "http:") {
+    if (url.protocol === "http:" && url.hostname !== "localhost" && !url.hostname.startsWith("127.")) {
       url.protocol = "https:";
       return Response.redirect(url.href, 301);
     }
@@ -53,17 +53,20 @@ const worker = {
     }
 
     const response = await handler.fetch(request, env, ctx);
-    return withSecurityHeaders(response);
+    return withSecurityHeaders(response, request);
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
   },
 };
 
-function withSecurityHeaders(response: Response): Response {
+function withSecurityHeaders(response: Response, request: Request): Response {
   const secured = new Response(response.body, response);
   const headers = secured.headers;
-  headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  const url = new URL(request.url);
+  if (url.hostname !== "localhost" && !url.hostname.startsWith("127.")) {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("X-Frame-Options", "DENY");

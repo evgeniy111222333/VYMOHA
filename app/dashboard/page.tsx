@@ -12,12 +12,12 @@ export default async function DashboardPage() {
   const [analyses, account] = await Promise.all([listAnalyses(user.userId, 6), ensureUserAccount({ id: user.userId, email: user.email, name: user.displayName })]);
   const average = analyses.length ? Math.round(analyses.reduce((sum, item) => sum + item.score, 0) / analyses.length) : 0;
   const now = currentTimestamp();
-  const isWelcomeBonus = account.creditBalance > 0 && account.totalCreditsPurchased === 0;
+  const isWelcomeBonus = account.creditBalance > 0 && account.totalCreditsPurchased === 0 && account.role !== "admin";
   
-  return <>{isWelcomeBonus && <div style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary-dark)", padding: "16px 20px", borderRadius: "12px", marginBottom: "24px", border: "1px solid var(--color-primary)", display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "12px" }}>
-    <strong style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px" }}>🎉 Вітаємо у Vymoha!</strong>
-    <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.5 }}>Ми нарахували вам <b>{account.creditBalance} безкоштовних сигналів</b>. Цього вистачить на 1 експертний або 2 поглиблені аналізи. Завантажте свій перший тендер просто зараз!</p>
-    <Link href="/analyze" className="button button--primary" style={{ padding: "8px 16px", fontSize: "14px" }}>Зробити перший аналіз</Link>
+  return <>{isWelcomeBonus && <div className="welcome-banner">
+    <strong>🎉 Вітаємо у Vymoha!</strong>
+    <p>Ми нарахували вам <b>30 безкоштовних сигналів</b>. Цього вистачить на 1 експертний або 2 поглиблені аналізи. Завантажте свій перший тендер просто зараз!</p>
+    <Link href="/analyze" className="button button--primary">Зробити перший аналіз</Link>
   </div>}<div className="dashboard-heading"><div><span className="section-kicker">Огляд</span><h1>Добрий день, {firstName(user.displayName)}.</h1><p>Командний центр рішень: баланс, ризики й тендери, які справді варті часу.</p></div><Link href="/analyze" className="button button--primary">Новий аналіз <ArrowRight size={16} /></Link></div><div className="stat-grid"><Stat icon={Coins} label="Сигнали" value={String(account.creditBalance)} note="для глибоких аналізів" /><Stat icon={SearchCheck} label="Перевірок" value={String(analyses.length)} note="у цьому просторі" /><Stat icon={Target} label="Середня оцінка" value={analyses.length ? `${average}/100` : "—"} note="за останні звіти" /><Stat icon={FileWarning} label="Потребують уваги" value={String(analyses.filter((item) => item.verdict !== "go").length)} note="maybe або no-go" /><Stat icon={Clock3} label="Дедлайн цього тижня" value={String(analyses.filter((item) => item.deadline && new Date(item.deadline).getTime() - now < 604_800_000).length)} note="активні перевірки" /></div>      <section className="dashboard-card dashboard-card--table">
         <div className="dashboard-card__heading">
           <div className="dashboard-card__heading-main">

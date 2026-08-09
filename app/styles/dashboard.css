@@ -115,6 +115,37 @@
   padding: clamp(38px, 5vw, 72px) clamp(24px, 4vw, 56px) 80px;
 }
 
+.welcome-banner {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 26px 32px;
+  border-radius: 16px;
+  margin-bottom: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+.welcome-banner::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0; width: 4px;
+  background: var(--signal);
+}
+.welcome-banner strong {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 18px; letter-spacing: -0.01em;
+}
+.welcome-banner p {
+  margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); max-width: 680px;
+}
+.welcome-banner b { color: var(--foreground); }
+.welcome-banner .button { margin-top: 6px; }
+
+
 .dashboard-heading {
   display: flex;
   align-items: end;
