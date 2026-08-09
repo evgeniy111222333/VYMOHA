@@ -448,13 +448,7 @@ function finalizeAnalysis(input: {
       ...analysis,
       score,
       confidence: Math.max(25, Math.min(99, Math.round(parsed.confidence))),
-      scoreFactors: [{
-        id: "ai-document-analysis",
-        label: "Оцінка за доказами",
-        points: score,
-        description: "Підсумковий бал сформовано після читання доступних файлів і зіставлення з профілем компанії.",
-        kind: "base",
-      }],
+      scoreFactors: matrixResult.factors,
       verdict,
       summary: parsed.summary
         .replace(/фінальний вердикт — ['"]?(?:maybe|go|no-go)['"]?/gi, `фінальний вердикт — '${verdict === "no-go" ? "не заходити" : verdict === "go" ? "можна заходити" : "потрібна перевірка"}'`)

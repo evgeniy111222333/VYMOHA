@@ -120,13 +120,13 @@ export function scoreTender(
 
 export type MultiVectorScoringInput = {
   requirements: Array<{ category: string; status: "met" | "missing" | "review" | "unknown" }>;
-  risks: Array<{ level: "critical" | "high" | "medium" | "low" }>;
+  risks: Array<{ title?: string; level: "critical" | "high" | "medium" | "low" }>;
   requiredDocumentsChecklist?: Array<{ category: string }>;
   hasCompanyProfile: boolean;
   submissionOpen: boolean;
 };
 
-export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { score: number; verdict: Verdict } {
+export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { score: number; verdict: Verdict; factors: ScoreFactor[] } {
   const reqs = input.requirements || [];
   const statutoryReqs = reqs.filter((r) => r.category === "statutory");
   const qualReqs = reqs.filter((r) => r.category === "qualification" || r.category === "experience");
@@ -145,24 +145,40 @@ export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { 
   const vTech = calcVector(techReqs, 25);
   const vFin = calcVector(finReqs, 15);
 
+  const factors: ScoreFactor[] = [];
+  factors.push({ id: "ai-qual", label: "Кваліфікація та досвід", points: vQual, description: `Зіставлення з профілем компанії (до ${35} балів)`, kind: "base" });
+  factors.push({ id: "ai-statutory", label: "Юридичні вимоги", points: vStatutory, description: `Статутні документи (до ${25} балів)`, kind: "base" });
+  factors.push({ id: "ai-tech", label: "Технічна відповідність", points: vTech, description: `Характеристики предмета (до ${25} балів)`, kind: "base" });
+  factors.push({ id: "ai-fin", label: "Фінансові умови", points: vFin, description: `Гарантії та оплата (до ${15} балів)`, kind: "base" });
+
   let raw = vStatutory + vQual + vTech + vFin;
 
-  for (const risk of input.risks || []) {
-    if (risk.level === "critical") raw -= 25;
-    else if (risk.level === "high") raw -= 14;
-    else if (risk.level === "medium") raw -= 7;
-    else if (risk.level === "low") raw -= 3;
+  for (const [i, risk] of (input.risks || []).entries()) {
+    const riskTitle = risk.title || "Знайдено ризик";
+    if (risk.level === "critical") { raw -= 25; factors.push({ id: `risk-${i}`, label: riskTitle, points: -25, description: "Критичний ризик", kind: "negative" }); }
+    else if (risk.level === "high") { raw -= 14; factors.push({ id: `risk-${i}`, label: riskTitle, points: -14, description: "Високий ризик", kind: "negative" }); }
+    else if (risk.level === "medium") { raw -= 7; factors.push({ id: `risk-${i}`, label: riskTitle, points: -7, description: "Середній ризик", kind: "negative" }); }
+    else if (risk.level === "low") { raw -= 3; factors.push({ id: `risk-${i}`, label: riskTitle, points: -3, description: "Низький ризик", kind: "negative" }); }
   }
 
   const hasCriticalStop = (input.risks || []).some((r) => r.level === "critical") || !input.submissionOpen;
   let score = Math.max(0, Math.min(input.hasCompanyProfile ? 100 : 69, Math.round(raw)));
 
+  if (!input.hasCompanyProfile && score === 69 && raw > 69) {
+    factors.push({ id: "profile-cap", label: "Немає підтвердженого профілю", points: 69 - raw, description: "Без профілю компанії система обмежує максимальний бал.", kind: "limit" });
+  }
+
   if (!input.submissionOpen) {
+    factors.push({ id: "closed", label: "Подання завершено", points: -score, description: "Дедлайн минув, участь неможлива.", kind: "negative" });
     score = 0;
   } else if (hasCriticalStop) {
+    const deduction = score - Math.min(score, 10);
+    if (deduction > 0) {
+      factors.push({ id: "critical-cap", label: "Блокуючий фактор", points: -deduction, description: "Критичні ризики обмежують доцільність участі.", kind: "negative" });
+    }
     score = Math.min(score, 10);
   }
 
   const verdict: Verdict = hasCriticalStop ? "no-go" : score >= 75 ? "go" : score >= 45 ? "maybe" : "no-go";
-  return { score, verdict };
+  return { score, verdict, factors };
 }
