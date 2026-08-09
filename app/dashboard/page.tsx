@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const [analyses, account] = await Promise.all([listAnalyses(user.userId, 6), ensureUserAccount({ id: user.userId, email: user.email, name: user.displayName })]);
   const average = analyses.length ? Math.round(analyses.reduce((sum, item) => sum + item.score, 0) / analyses.length) : 0;
   const now = currentTimestamp();
-  const isWelcomeBonus = account.creditBalance > 0 && account.totalCreditsPurchased === 0 && account.role !== "admin" && analyses.length === 0;
+  const isWelcomeBonus = account.creditBalance === 30 && account.totalCreditsPurchased === 0 && account.role !== "admin";
   
   return <>{isWelcomeBonus && <div className="welcome-banner">
     <strong>🎉 Вітаємо у Vymoha!</strong>
