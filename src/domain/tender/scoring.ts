@@ -155,7 +155,13 @@ export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { 
   }
 
   const hasCriticalStop = (input.risks || []).some((r) => r.level === "critical") || !input.submissionOpen;
-  const score = Math.max(0, Math.min(input.hasCompanyProfile ? 100 : 69, Math.round(raw)));
+  let score = Math.max(0, Math.min(input.hasCompanyProfile ? 100 : 69, Math.round(raw)));
+
+  if (!input.submissionOpen) {
+    score = 0;
+  } else if (hasCriticalStop) {
+    score = Math.min(score, 10);
+  }
 
   const verdict: Verdict = hasCriticalStop ? "no-go" : score >= 75 ? "go" : score >= 45 ? "maybe" : "no-go";
   return { score, verdict };
