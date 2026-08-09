@@ -21,5 +21,5 @@ export default async function BillingPage() {
 }
 
 function ledgerReason(reason: string): string {
-  return ({ purchase: "Поповнення", analysis_charge: "AI-аналіз", analysis_refund: "Повернення", admin_grant: "Нарахування адміністратором", admin_bootstrap: "Стартовий баланс адміністратора" } as Record<string, string>)[reason] ?? reason;
+  return ({ purchase: "Поповнення", analysis_charge: "AI-аналіз", analysis_refund: "Повернення", admin_grant: "Нарахування адміністратором", admin_bootstrap: "Стартовий баланс адміністратора", welcome_bonus: "Вітальний бонус" } as Record<string, string>)[reason] ?? reason;
 }
