@@ -322,7 +322,7 @@
 .settings-card dl { display: grid; gap: 0; margin-top: 28px; border-top: 1px solid #e1e3dc; }
 .settings-card dl > div { display: flex; justify-content: space-between; gap: 20px; padding: 16px 0; border-bottom: 1px solid #e1e3dc; }
 .settings-card dt { color: var(--muted); font-size: 13px; }
-.settings-card dd { margin: 0; font-size: 13px; font-weight: 650; }
+.settings-card dd { margin: 0; font-size: 13px; font-weight: 650; display: flex; align-items: center; gap: 6px; }
 
 @media (max-width: 1080px) {
   .dashboard-sidebar { width: 78px; padding-inline: 11px; }
