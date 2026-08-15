@@ -11,6 +11,15 @@ export type PaymentOrder = {
   status: string; providerSessionId: string | null; createdAt: string; paidAt: string | null;
 };
 
+export type MonobankPayment = {
+  sessionId: string;
+  paymentId: string;
+  amountMinor: number;
+  currencyCode: number;
+};
+
+export type MonobankFulfillmentResult = "fulfilled" | "already-processed" | "not-found" | "amount-mismatch" | "currency-mismatch";
+
 export async function reserveAnalysisCredits(input: {
   userId: string; analysisId: string; tier: AnalysisTier; model: string; credits: number;
 }): Promise<number> {
@@ -91,7 +100,7 @@ export async function listCreditLedger(userId: string, limit = 30): Promise<Cred
   }));
 }
 
-export async function createPaymentOrder(userId: string, pack: CreditPackage): Promise<PaymentOrder> {
+export async function createPaymentOrder(userId: string, pack: CreditPackage, provider: "stripe" | "monobank" = "stripe"): Promise<PaymentOrder> {
   const database = await ensureDatabase();
   const order: PaymentOrder = {
     id: crypto.randomUUID(), userId, packageId: pack.id, credits: pack.credits, amountMinor: pack.amountMinor,
@@ -99,8 +108,8 @@ export async function createPaymentOrder(userId: string, pack: CreditPackage): P
   };
   await database.prepare(`INSERT INTO payment_orders (
     id, user_id, package_id, credits, amount_minor, currency, status, provider, created_at
-  ) VALUES (?, ?, ?, ?, ?, ?, 'pending', 'stripe', ?)`).bind(
-    order.id, userId, order.packageId, order.credits, order.amountMinor, order.currency, order.createdAt,
+  ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)`).bind(
+    order.id, userId, order.packageId, order.credits, order.amountMinor, order.currency, provider, order.createdAt,
   ).run();
   return order;
 }
@@ -137,6 +146,51 @@ export async function fulfillPayment(orderId: string, sessionId: string, payment
       WHERE id = ? AND provider_session_id = ? AND status = 'pending'`).bind(paymentId ?? null, paidAt, orderId, sessionId),
   ]);
   return (results[2]?.meta.changes ?? 0) === 1;
+}
+
+/**
+ * Credits an order only when a Monobank statement item matches its generated
+ * payment code, exact amount and UAH currency. The paid-state condition makes
+ * duplicate webhooks safe.
+ */
+export async function fulfillMonobankPayment(payment: MonobankPayment): Promise<MonobankFulfillmentResult> {
+  const database = await ensureDatabase();
+  const order = await database.prepare(`SELECT id, user_id, credits, amount_minor, currency, status FROM payment_orders
+    WHERE provider = 'monobank' AND provider_session_id = ? LIMIT 1`)
+    .bind(payment.sessionId).first<Record<string, unknown>>();
+
+  if (!order) return "not-found";
+  if (String(order.status) !== "pending") return "already-processed";
+  if (payment.currencyCode !== 980 || String(order.currency).toLowerCase() !== "uah") return "currency-mismatch";
+  if (Number(order.amount_minor) !== payment.amountMinor) return "amount-mismatch";
+
+  const orderId = String(order.id);
+  const userId = String(order.user_id);
+  const credits = Number(order.credits);
+  const paidAt = new Date().toISOString();
+  const results = await database.batch([
+    database.prepare(`UPDATE user_accounts SET credit_balance = credit_balance + ?,
+      total_credits_purchased = total_credits_purchased + ?, updated_at = ?
+      WHERE user_id = ? AND EXISTS (
+        SELECT 1 FROM payment_orders WHERE id = ? AND provider = 'monobank'
+          AND provider_session_id = ? AND status = 'pending' AND amount_minor = ? AND currency = 'uah'
+      )`).bind(credits, credits, paidAt, userId, orderId, payment.sessionId, payment.amountMinor),
+    database.prepare(`INSERT OR IGNORE INTO credit_ledger (
+      id, user_id, delta, balance_after, reason, idempotency_key, metadata_json, created_at
+    ) SELECT ?, ?, ?, credit_balance, 'purchase', ?, ?, ? FROM user_accounts
+      WHERE user_id = ? AND EXISTS (
+        SELECT 1 FROM payment_orders WHERE id = ? AND provider = 'monobank'
+          AND provider_session_id = ? AND status = 'pending' AND amount_minor = ? AND currency = 'uah'
+      )`).bind(
+      crypto.randomUUID(), userId, credits, `payment:monobank:${payment.paymentId}`,
+      JSON.stringify({ orderId, sessionId: payment.sessionId, paymentId: payment.paymentId, amountMinor: payment.amountMinor, currencyCode: payment.currencyCode }),
+      paidAt, userId, orderId, payment.sessionId, payment.amountMinor,
+    ),
+    database.prepare(`UPDATE payment_orders SET status = 'paid', provider_payment_id = ?, paid_at = ?
+      WHERE id = ? AND provider = 'monobank' AND provider_session_id = ? AND status = 'pending'
+        AND amount_minor = ? AND currency = 'uah'`).bind(payment.paymentId, paidAt, orderId, payment.sessionId, payment.amountMinor),
+  ]);
+  return (results[2]?.meta.changes ?? 0) === 1 ? "fulfilled" : "already-processed";
 }
 
 function safeObject(value: unknown): Record<string, unknown> {

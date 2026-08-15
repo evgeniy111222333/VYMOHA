@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const organizations = sqliteTable(
   "organizations",
@@ -289,4 +289,39 @@ export const analysisTelemetry = sqliteTable(
     index("idx_analysis_telemetry_created").on(table.createdAt),
     index("idx_analysis_telemetry_expires").on(table.expiresAt),
   ],
+);
+
+export const marketTenders = sqliteTable(
+  "market_tenders",
+  {
+    id: text("id").primaryKey(),
+    tenderExternalId: text("tender_external_id").notNull(),
+    cpv8: text("cpv8").notNull(),
+    cpv5: text("cpv5").notNull(),
+    cpv3: text("cpv3").notNull(),
+    region: text("region"),
+    method: text("method"),
+    expectedAmount: real("expected_amount").notNull(),
+    currency: text("currency"),
+    participants: integer("participants").notNull().default(0),
+    winningAmount: real("winning_amount"),
+    winnerEdrpou: text("winner_edrpou"),
+    completedAt: text("completed_at"),
+    indexedAt: text("indexed_at").notNull(),
+  },
+  (table) => [
+    index("idx_market_tenders_cpv5_completed").on(table.cpv5, table.completedAt),
+    index("idx_market_tenders_cpv3_completed").on(table.cpv3, table.completedAt),
+    index("idx_market_tenders_region_completed").on(table.region, table.completedAt),
+  ],
+);
+
+export const marketIndexProgress = sqliteTable(
+  "market_index_progress",
+  {
+    key: text("key").primaryKey(),
+    cursor: text("cursor"),
+    finished: integer("finished", { mode: "boolean" }).notNull().default(false),
+    updatedAt: text("updated_at").notNull(),
+  },
 );

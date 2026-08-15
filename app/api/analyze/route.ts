@@ -1,9 +1,10 @@
-import { runtimeEnv } from "@/db/runtime";
+import { runtimeEnv, type RuntimeEnv } from "@/db/runtime";
 import { getAnalysisTier, type AnalysisTier } from "@/src/domain/billing/packages";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
 import { enhanceAnalysis, OpenAIAnalysisError } from "@/src/infrastructure/openai/enhancer";
 import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { fetchTender } from "@/src/infrastructure/prozorro/client";
+import { fetchMarketBenchmark } from "@/src/infrastructure/prozorro/market";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { completeAnalysisUsage, refundAnalysisCredits, reserveAnalysisCredits } from "@/src/infrastructure/storage/billing";
 import { consumeRateLimit, getCompanyProfile, recordAnalysisTelemetry, saveAnalysis, upsertPublicTenderSummary, writeAuditEvent } from "@/src/infrastructure/storage/repository";
@@ -74,16 +75,29 @@ export async function POST(request: Request): Promise<Response> {
     if (requestedTier !== "quick" && !user) throw new HttpError(401, "Увійдіть, щоб запустити повний AI-аналіз.");
     const company = parsed.data.company ?? (user ? await getCompanyProfile(user.id) : undefined) ?? undefined;
     const tender = await fetchTender(parsed.data.source);
-    const buyerContext = tender.buyerEdrpou ? await fetchBuyerContext(tender.buyerEdrpou) : undefined;
-    let analysis = analyzeTender(tender, company, new Date(), buyerContext, requestedTier);
+    const [buyerContext, intelligence] = await Promise.all([
+      tender.buyerEdrpou ? fetchBuyerContext(tender.buyerEdrpou) : Promise.resolve(undefined),
+      fetchMarketBenchmark(tender).catch(() => null),
+    ]);
+    const marketContext = intelligence?.context ?? undefined;
+    const competitionRisk = intelligence?.competition ?? undefined;
+    let analysis = analyzeTender(tender, company, new Date(), buyerContext, requestedTier, marketContext, competitionRisk);
     let creditBalance = account?.creditBalance;
 
     if (requestedTier !== "quick" && user) {
-      const env = runtimeEnv();
+      const runtime = runtimeEnv();
+      // GEMINI_* is the canonical configuration. OPENAI_* remains a short
+      // migration bridge for the currently deployed secret names.
+      const env: RuntimeEnv = {
+        ...runtime,
+        OPENAI_API_KEY: runtime.GEMINI_API_KEY ?? runtime.OPENAI_API_KEY,
+        OPENAI_MODEL_STANDARD: runtime.GEMINI_MODEL_STANDARD ?? runtime.OPENAI_MODEL_STANDARD,
+        OPENAI_MODEL_EXPERT: runtime.GEMINI_MODEL_EXPERT ?? runtime.OPENAI_MODEL_EXPERT,
+      };
       if (!env.OPENAI_API_KEY) throw new HttpError(503, "Поглиблений аналіз тимчасово недоступний. Спробуйте швидку перевірку.");
       const model = requestedTier === "expert"
-        ? env.OPENAI_MODEL_EXPERT ?? "gpt-5.6-sol"
-        : env.OPENAI_MODEL_STANDARD ?? "gpt-5.6-terra";
+        ? env.OPENAI_MODEL_EXPERT ?? "gemini-3.6-flash"
+        : env.OPENAI_MODEL_STANDARD ?? "gemini-3.6-flash";
       const userHash = await sha256(user.id);
       creditBalance = await reserveAnalysisCredits({
         userId: user.id, analysisId: analysis.id, tier: requestedTier, model, credits: tier.credits,

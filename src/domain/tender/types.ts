@@ -2,8 +2,14 @@ export type RiskLevel = "critical" | "high" | "medium" | "low";
 export type RequirementStatus = "met" | "missing" | "review" | "unknown";
 export type Verdict = "go" | "maybe" | "no-go";
 
-export type Evidence = { label: string; source: string; excerpt?: string };
+export type EvidenceType = "direct_quote" | "business_inference" | "assumption";
 
+export type Evidence = { 
+  label: string; 
+  source: string; 
+  excerpt?: string;
+  evidenceType?: EvidenceType;
+};
 export type ScoreFactor = {
   id: string;
   label: string;
@@ -25,12 +31,67 @@ export type BuyerContext = {
   sourceUrl: string;
 };
 
+export type CompetitionLevel = "low" | "normal" | "high" | "unknown";
+
+export type RedFlagSeverity = "info" | "warning";
+
+export type RedFlagSignal = {
+  id: string;
+  title: string;
+  severity: RedFlagSeverity;
+  description: string;
+  evidence: { label: string; source: string; excerpt?: string };
+};
+
+export type CompetitionRiskLevel = "low" | "medium" | "high";
+
+/**
+ * Ризики для учасника за об'єктивними відкритими даними: ознаки низької
+ * конкуренції та зміни документації після публікації. Це не оцінка
+ * законності дій замовника, а сигнали, що впливають на рішення про участь.
+ * Кожен сигнал має доказ і є перевірюваним.
+ */
+export type CompetitionRisk = {
+  level: CompetitionRiskLevel;
+  flags: RedFlagSignal[];
+  /** Розмір конкурентної вибірки аналогів (сигнали історії рахуються при ≥5). */
+  sampleSize: number;
+};
+
+/**
+ * Конкурентний бенчмарк: агрегат по історичних завершених закупівлях
+ * (той самий CPV / регіон). Відносні метрики (медіана дисконту, медіана
+ * учасників), а не абсолютні ціни — так інфляція та ПДВ не спотворюють
+ * висновок. Цільова ціна виводиться з очікуваної вартості поточного
+ * тендера множенням на (1 − медіанний дисконт).
+ */
+export type MarketContext = {
+  scope: "market" | "buyer";
+  cpvClass: string;
+  region: string | null;
+  sampleSize: number;
+  discountSampleSize: number;
+  windowMonths: number;
+  medianParticipants: number | null;
+  medianDiscount: number | null;
+  discountP25: number | null;
+  discountP75: number | null;
+  singleBidderRate: number | null;
+  competitionLevel: CompetitionLevel;
+  confidence: "high" | "low";
+  topCompetitors: Array<{ edrpou: string; wins: number }>;
+  sourceUrl: string;
+};
+
+export type MatchType = "exact_table_match" | "general_clause" | "not_applicable";
+
 export type TenderRequirement = {
   id: string;
   title: string;
   description: string;
   category: "deadline" | "financial" | "legal" | "technical" | "experience" | "document";
   status: RequirementStatus;
+  matchType?: MatchType;
   evidence: Evidence;
 };
 
@@ -39,6 +100,13 @@ export type TenderRisk = {
   title: string;
   description: string;
   level: RiskLevel;
+  /**
+   * true — участь юридично неможлива або фінансово руйнівна (дедлайн минув,
+   * дискваліфікаційна вимога без альтернатив). Лише такі критичні ризики
+   * активують стоп-кап у зваженій матриці. Визначається промптом або
+   * детерміновано; для сумнівних випадків має бути false.
+   */
+  isStopFactor?: boolean;
   mitigation: string;
   evidence: Evidence;
 };
@@ -66,6 +134,31 @@ export type TenderLot = {
   auctionStartDate?: string;
 };
 
+export type StructuredCriterion = {
+  title: string;
+  description?: string;
+  numericRequirements?: Array<{
+    title?: string;
+    expectedValue?: string;
+    minValue?: string;
+    maxValue?: string;
+  }>;
+};
+
+export type TenderClarification = {
+  title?: string;
+  question?: string;
+  answer?: string;
+  date?: string;
+};
+
+export type TenderMilestone = {
+  type?: string;
+  title?: string;
+  description?: string;
+  dueDate?: string;
+};
+
 export type NormalizedTender = {
   internalId: string;
   externalId: string;
@@ -74,6 +167,7 @@ export type NormalizedTender = {
   description?: string;
   buyer: string;
   buyerEdrpou?: string;
+  region?: string;
   status: string;
   method?: string;
   amount?: number;
@@ -89,8 +183,13 @@ export type NormalizedTender = {
   guaranteeAmount?: number;
   guaranteeCurrency?: string;
   minimalStepAmount?: number;
+  awardCriteria?: string;
+  enquiryDeadline?: string;
+  complaintDeadline?: string;
+  clarifications?: TenderClarification[];
+  milestones?: TenderMilestone[];
   documents: TenderDocument[];
-  structuredCriteria: Array<{ title: string; description?: string }>;
+  structuredCriteria: StructuredCriterion[];
   itemCount: number;
   lots?: TenderLot[];
 };
@@ -146,6 +245,8 @@ export type TenderAnalysis = {
   confidence: number;
   scoreFactors: ScoreFactor[];
   buyerContext?: BuyerContext;
+  marketContext?: MarketContext;
+  competitionRisk?: CompetitionRisk;
   summary: string;
   generatedAt: string;
   mode: "structured" | "ai-enhanced";

@@ -1,4 +1,4 @@
-import type { CompanyProfile, TenderAnalysis } from "@/src/domain/tender/types";
+import type { CompanyProfile, TenderAnalysis, TenderDocument } from "@/src/domain/tender/types";
 
 const statusMap: Record<string, string> = {
   "active.enquiries": "Період уточнень",
@@ -21,43 +21,98 @@ const methodMap: Record<string, string> = {
   "negotiation.quick": "Переговорна процедура (скорочена)",
 };
 
-export function buildTenderPrompt(analysis: TenderAnalysis, company?: CompanyProfile): string {
+/**
+ * Ринковий бенчмарк — детерміновані факти з історичних даних Prozorro.
+ * Модель може їх цитувати, але ЗАБОРОНЕНО вигадувати цифри поза цим блоком.
+ */
+function buildMarketBlock(analysis: TenderAnalysis): string {
+  const market = analysis.marketContext;
+  if (!market) return "";
+  const discountPercent = market.medianDiscount !== null ? `${Math.round(market.medianDiscount * 100)}%` : "н/д";
+  const participants = market.medianParticipants !== null ? String(market.medianParticipants) : "н/д";
+  const target = market.medianDiscount !== null && analysis.tender.amount
+    ? `${new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 }).format(Math.round(analysis.tender.amount * (1 - market.medianDiscount)))} ${analysis.tender.currency ?? "UAH"}`
+    : "н/д";
+  const scope = market.scope === "buyer" ? "цього замовника" : `ринку за CPV ${market.cpvClass}${market.region ? ` у ${market.region}` : ""}`;
+  const competitors = market.topCompetitors.length
+    ? market.topCompetitors.map((c) => `ЄДРПОУ ${c.edrpou} (${c.wins} перемог)`).join(", ")
+    : "немає даних";
+  return `РИНКОВИЙ БЕНЧМАРК (вибірка ${market.sampleSize} аналогічних закупівель ${scope}, ${market.windowMonths} міс):
+- медіана учасників: ${participants};
+- медіанний дисконт переможця: ${discountPercent};
+- цільова ціна поточної закупівлі: ${target};
+- частка закупівель з ≤1 учасником: ${market.singleBidderRate !== null ? `${Math.round(market.singleBidderRate * 100)}%` : "н/д"};
+- повторювані переможці: ${competitors}.
+Ці цифри — факти, не оцінки. Згадуй їх у summary/risks лише як довідковий контекст, не перераховуй і не змінюй.`;
+}
+
+/**
+ * Ознаки низької конкуренції — об'єктивні сигнали з відкритих даних.
+ * Модель може їх згадувати, але НЕ має вигадувати власні «ознаки корупції».
+ */
+function buildCompetitionBlock(analysis: TenderAnalysis): string {
+  const risk = analysis.competitionRisk;
+  if (!risk || risk.flags.length === 0) return "";
+  const lines = risk.flags.map((flag) => `- ${flag.title}: ${flag.description}`);
+  const scope = risk.sampleSize >= 5 ? ` (вибірка ${risk.sampleSize} аналогів)` : "";
+  return `ОЗНАКИ РИЗИКУ ДЛЯ УЧАСНИКА${scope} (рівень ${risk.level}):
+${lines.join("\n")}
+Це статистичні сигнали з відкритих даних, не оцінка законності дій замовника. Згадуй їх у risks як довідку, але не стверджуй «заточеність» чи «корупцію».`;
+}
+
+export function buildTenderPrompt(analysis: TenderAnalysis, company?: CompanyProfile, documentsToSend?: TenderDocument[]): string {
   const tender = analysis.tender;
   const companyContext = company
     ? JSON.stringify({ name: company.name, edrpou: company.edrpou, cpvCodes: company.cpvCodes, certifications: company.certifications, capabilities: company.capabilities })
     : "Профіль постачальника не надано. Не підтверджуй відповідність постачальника і не став verdict=go.";
     
+  // Лише файли, які фактично передаються моделі. Показ назв файлів, які не
+  // надіслано, змушує модель домальовувати їх у documentCoverage як "read".
+  const documents = documentsToSend ?? tender.documents;
   const structured = JSON.stringify({
     externalId: tender.externalId, title: tender.title, description: tender.description, buyer: tender.buyer,
-    status: statusMap[tender.status] || tender.status, 
-    method: methodMap[tender.method] || tender.method, 
-    amount: tender.amount, currency: tender.currency,
-    deadline: tender.deadline, cpvCode: tender.cpvCode, cpvLabel: tender.cpvLabel,
+    status: statusMap[tender.status] || tender.status,
+    method: tender.method ? (methodMap[tender.method] || tender.method) : undefined,
+    amount: tender.amount, currency: tender.currency, vatIncluded: tender.vatIncluded,
+    deadline: tender.deadline, enquiryDeadline: tender.enquiryDeadline, complaintDeadline: tender.complaintDeadline,
+    awardCriteria: tender.awardCriteria === "lowestCost" ? "найнижча ціна" : tender.awardCriteria,
+    cpvCode: tender.cpvCode, cpvLabel: tender.cpvLabel,
     guaranteeAmount: tender.guaranteeAmount, minimalStepAmount: tender.minimalStepAmount,
     itemCount: tender.itemCount, criteria: tender.structuredCriteria,
-    documents: tender.documents.map((item) => ({ title: item.title, format: item.format, documentType: item.documentType, dateModified: item.dateModified })),
+    clarifications: tender.clarifications, milestones: tender.milestones,
+    documents: documents.map((item) => ({ title: item.title, format: item.format, documentType: item.documentType, dateModified: item.dateModified })),
   });
 
   return `Ти — старший тендерний аналітик українського постачальника. Проаналізуй закупівлю Prozorro та всі прикріплені файли українською мовою.
 
 ЗАКУПІВЛЯ: ${structured}
 ПРОФІЛЬ ПОСТАЧАЛЬНИКА: ${companyContext}
+${buildMarketBlock(analysis)}
+${buildCompetitionBlock(analysis)}
 ДЖЕРЕЛО: ${tender.sourceUrl}
 
 Побудуй доказовий go / maybe / no-go висновок. Окремо знайди:
-1) точні строки, забезпечення, кваліфікаційні та технічні вимоги;
+1) точні строки, забезпечення, кваліфікаційні вимоги;
 2) вичерпний чек-лист усіх документів (requiredDocumentsChecklist), які учасник повинен завантажити в Prozorro для участі у цій закупівлі (довідки МВС/ДПС, МТБ, працівники, досвід, паспорти якості, листи-гарантії);
-3) дискримінаційні, неоднозначні чи ризикові умови;
+3) ОБОВ'ЯЗКОВИЙ СКАН ДОГОВОРУ. Проведи системний аналіз проекту договору на наявність усіх ключових ризиків. Додай у 'risks' або 'requirements' усі знайдені:
+   - Розміри штрафів та пені за прострочення чи порушення.
+   - Умови настання форс-мажорних обставин.
+   - Умови одностороннього розірвання договору.
+   - Умови оплати та можливі відстрочки.
 4) невідповідності профілю постачальника;
 5) питання, які варто поставити замовнику до дедлайну.
 
 Правила якості:
-- requiredDocumentsChecklist має містити вичерпний список файлів і довідок для подачі: category (statutory|qualification|technical|financial|other), title (точна назва), description (умови розробки), note (підказка про орган чи форму), requiredType (document|statement|either), та обов'язково evidence: { label (назва файлу або Постанова №1178), source (${tender.sourceUrl}), excerpt (ТОЧНА ЦИТАТА-ДОКАЗ із файлу ТД українською мовою, щоб користувач міг знайти її через Ctrl+F) };
+- Для категорії 'technical' ти ЗОБОВ'ЯЗАНИЙ знайти повну таблицю технічної специфікації (всі позиції товарів чи послуг) і звірити КОЖНУ позицію з \`capabilities\` профілю компанії. Не можна ставити status='met' на основі загальних юридичних фраз (напр. 'відповідає стандартам'). Статут 'met' вимагає підтвердження кожної фізичної позиції. Якщо є невідомі позиції чи розбіжності, став 'review' і виводь їх перелік. Завжди використовуй поле 'matchType' ('exact_table_match' для повної перевірки таблиці специфікації, 'general_clause' для загальних фраз, 'not_applicable' для інших категорій).
+- Врахуй дедлайн запитів на уточнення (enquiryDeadline): якщо він минув, згадай це в requirements або risks. Опубліковані відповіді замовника (clarifications) — готові роз'яснення вимог: використовуй їх як докази замість припущень. Критерій визначення переможця (awardCriteria) згадай у requirements.
+- ЗАБОРОНЕНО додавати ризики чи вимоги про відсутність профілю постачальника або невідомі дані про компанію-учасника — система враховує це автоматично у власному скорингу. Аналізуй лише об'єктивні властивості закупівлі.
+- Поле isStopFactor у ризиках: став true ЛИШЕ якщо участь юридично неможлива або фінансово руйнівна (дедлайн подання минув, дискваліфікаційна вимога без жодної альтернативи). Штрафні санкції, відстрочки платежів, жорсткі умови договору — це рівень 'high' або нижче з isStopFactor=false.
+- У summary НЕ зазначай вердикт чи рішення про участь (go / maybe / no-go, 'заходити / не заходити') — фінальний вердикт і бал обчислює система окремо. Summary описує лише факти й ризики.
+- requiredDocumentsChecklist має містити вичерпний список файлів і довідок для подачі: category (statutory|qualification|technical|financial|other), title (точна назва), description (умови розробки), note (підказка про орган чи форму), requiredType (document|statement|either), та обов'язково evidence: { label, source, excerpt, evidenceType };
 - ЗАБОРОНЕНО цитувати технічний блок "ЗАКУПІВЛЯ" (наприклад, суми, статуси чи методи) як докази для вимог чи ризиків. Всі докази (evidence.excerpt) бери ВИКЛЮЧНО з текстів прикріплених файлів тендерної документації, або з блоку criteria!
-- не вигадуй сторінки, цитати, вимоги чи відповідність;
-- кожен ризик і вимога повинні містити evidence з назвою файлу/розділу та коротким точним excerpt;
+- кожен ризик і вимога повинні містити evidence з назвою файлу/розділу та коротким точним excerpt. У полі 'evidenceType' вказуй 'direct_quote' (точна цитата), 'business_inference' (висновок з фактів) або 'assumption' (припущення);
 - якщо доказу немає, status=unknown або review, а не met;
-- якщо дедлайн подання минув або статус процедури закритий/кваліфікація (status не "Прийом пропозицій"), ОБОВ'ЯЗКОВО вкажи в першому реченні summary, що прийом пропозицій закритий, та додай у risks критичний ризик 'Дедлайн подання минув';
+- якщо дедлайн подання минув або статус процедури закритий/кваліфікація (status не "Прийом пропозицій"), ОБОВ'ЯЗКОВО вкажи в першому реченні summary, що прийом пропозицій закритий, та додай у risks критичний ризик 'Дедлайн подання минув' з isStopFactor=true;
 - verdict=go дозволений лише за наявності профілю постачальника, прочитаних ключових файлів і відсутності критичних стоп-факторів;
 - score відображає готовність саме цього постачальника, а confidence — повноту доступних доказів;
 - source в evidence завжди має бути ${tender.sourceUrl};

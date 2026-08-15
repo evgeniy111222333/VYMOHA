@@ -2,13 +2,21 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
+import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
 
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   DOCUMENTS: R2Bucket;
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL_STANDARD?: string;
+  GEMINI_MODEL_EXPERT?: string;
+  // Temporary aliases while existing production secrets are migrated.
   OPENAI_API_KEY?: string;
-  OPENAI_MODEL?: string;
+  OPENAI_MODEL_STANDARD?: string;
+  OPENAI_MODEL_EXPERT?: string;
+  MONOBANK_JAR_ID?: string;
+  MONOBANK_WEBHOOK_SECRET?: string;
   APP_BASE_URL?: string;
   RESEND_API_KEY?: string;
   NOTIFICATION_FROM?: string;
@@ -57,6 +65,8 @@ const worker = {
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
+    ctx.waitUntil(indexCompletedTenders().catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
+    ctx.waitUntil(backfillMarketIndex().catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
   },
 };
 
@@ -72,6 +82,9 @@ function withSecurityHeaders(response: Response, request: Request): Response {
   headers.set("X-Frame-Options", "DENY");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
   headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  if (isNonIndexablePath(url.pathname)) {
+    headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
   headers.set("Content-Security-Policy", [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
@@ -85,6 +98,10 @@ function withSecurityHeaders(response: Response, request: Request): Response {
     "form-action 'self'",
   ].join("; "));
   return secured;
+}
+
+function isNonIndexablePath(pathname: string): boolean {
+  return ["/api", "/auth", "/dashboard"].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 export default worker;

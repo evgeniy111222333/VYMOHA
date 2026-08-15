@@ -3,9 +3,15 @@ import { env } from "cloudflare:workers";
 export type RuntimeEnv = {
   DB: D1Database;
   DOCUMENTS: R2Bucket;
+  GEMINI_API_KEY?: string;
+  GEMINI_MODEL_STANDARD?: string;
+  GEMINI_MODEL_EXPERT?: string;
+  /** @deprecated Transitional aliases for an existing deployment. */
   OPENAI_API_KEY?: string;
   OPENAI_MODEL_STANDARD?: string;
   OPENAI_MODEL_EXPERT?: string;
+  MONOBANK_JAR_ID?: string;
+  MONOBANK_WEBHOOK_SECRET?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   APP_BASE_URL?: string;
@@ -117,6 +123,16 @@ async function initialize(database: D1Database): Promise<void> {
       id TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, user_agent_hash TEXT, revoked_at TEXT
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS market_tenders (
+      id TEXT PRIMARY KEY, tender_external_id TEXT NOT NULL,
+      cpv8 TEXT NOT NULL, cpv5 TEXT NOT NULL, cpv3 TEXT NOT NULL,
+      region TEXT, method TEXT, expected_amount REAL NOT NULL, currency TEXT,
+      participants INTEGER NOT NULL DEFAULT 0, winning_amount REAL, winner_edrpou TEXT,
+      completed_at TEXT, indexed_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS market_index_progress (
+      key TEXT PRIMARY KEY, cursor TEXT, finished INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
+    )`),
   ]);
   await ensureUserAccountColumns(database);
   await database.batch([
@@ -148,6 +164,9 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_expires ON auth_sessions(user_id, expires_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_cpv5_completed ON market_tenders(cpv5, completed_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_cpv3_completed ON market_tenders(cpv3, completed_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_region_completed ON market_tenders(region, completed_at)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
 }

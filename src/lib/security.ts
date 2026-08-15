@@ -1,3 +1,9 @@
+declare global {
+  interface SubtleCrypto {
+    timingSafeEqual(left: ArrayBuffer, right: ArrayBuffer): boolean;
+  }
+}
+
 export function assertSameOrigin(request: Request): void {
   const origin = request.headers.get("origin");
   if (!origin) return;
@@ -22,6 +28,26 @@ export async function sha256(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Compare secrets without exposing a timing signal. */
+export async function timingSafeSecretEqual(left: string, right: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [leftDigest, rightDigest] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(left)),
+    crypto.subtle.digest("SHA-256", encoder.encode(right)),
+  ]);
+  if (typeof crypto.subtle.timingSafeEqual === "function") {
+    return crypto.subtle.timingSafeEqual(leftDigest, rightDigest);
+  }
+  // Node's WebCrypto shim used in unit tests lacks timingSafeEqual. The
+  // digests have a fixed equal length, so this fallback performs every byte
+  // comparison before deciding.
+  const a = new Uint8Array(leftDigest);
+  const b = new Uint8Array(rightDigest);
+  let difference = 0;
+  for (let index = 0; index < a.length; index += 1) difference |= a[index]! ^ b[index]!;
+  return difference === 0;
 }
 
 export function clientAddress(request: Request): string {

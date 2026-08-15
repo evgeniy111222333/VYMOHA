@@ -20,6 +20,11 @@ type TenderDetails = ApiTender & {
   procuringEntity?: { name?: unknown; identifier?: { id?: unknown; legalName?: unknown } };
   status?: unknown;
   procurementMethodType?: unknown;
+  awardCriteria?: unknown;
+  enquiryPeriod?: { startDate?: unknown; endDate?: unknown };
+  complaintPeriod?: { endDate?: unknown };
+  questions?: Array<Record<string, unknown>>;
+  milestones?: Array<Record<string, unknown>>;
   value?: { amount?: unknown; currency?: unknown; valueAddedTaxIncluded?: unknown };
   tenderPeriod?: { startDate?: unknown; endDate?: unknown };
   dateModified?: unknown;
@@ -45,6 +50,11 @@ export function extractTenderReference(value: string): string {
 export async function fetchTender(value: string): Promise<NormalizedTender> {
   const envelope = await fetchRawTenderEnvelope(value);
   return normalizeTender(envelope.data);
+}
+
+/** Test seam: normalization is deterministic pure logic worth covering directly. */
+export function normalizeTenderForTest(raw: Record<string, unknown>): NormalizedTender {
+  return normalizeTender(raw as ApiTender);
 }
 
 export async function fetchRawTenderEnvelope(value: string): Promise<ApiEnvelope<ApiTender>> {
@@ -132,7 +142,6 @@ async function safeFetch(url: string): Promise<Response> {
 
 function normalizeTender(raw: ApiTender): NormalizedTender {
   const record = raw as TenderDetails;
-  const docs = Array.isArray(record.documents) ? record.documents : [];
   const criteria = Array.isArray(record.criteria) ? record.criteria : [];
   const mainClassification = record.items?.[0]?.classification ?? record.classification;
   const externalId = String(record.tenderID ?? raw.id);
@@ -144,6 +153,7 @@ function normalizeTender(raw: ApiTender): NormalizedTender {
     description: optionalString(record.description),
     buyer: String(record.procuringEntity?.name ?? record.procuringEntity?.identifier?.legalName ?? "Замовник не вказаний"),
     buyerEdrpou: optionalString(record.procuringEntity?.identifier?.id),
+    region: optionalString((record.procuringEntity as { address?: { region?: unknown } } | undefined)?.address?.region),
     status: String(record.status ?? "unknown"), method: optionalString(record.procurementMethodType),
     amount: optionalNumber(record.value?.amount), currency: optionalString(record.value?.currency),
     vatIncluded: typeof record.value?.valueAddedTaxIncluded === "boolean" ? record.value.valueAddedTaxIncluded : undefined,
@@ -157,15 +167,20 @@ function normalizeTender(raw: ApiTender): NormalizedTender {
     cpvCode: optionalString(mainClassification?.id), cpvLabel: optionalString(mainClassification?.description),
     guaranteeAmount: optionalNumber(record.guarantee?.amount), guaranteeCurrency: optionalString(record.guarantee?.currency),
     minimalStepAmount: optionalNumber(record.minimalStep?.amount),
-    documents: docs.map((document: Record<string, unknown>) => ({
-      id: String(document.id ?? crypto.randomUUID()), title: String(document.title ?? "Документ"),
-      format: optionalString(document.format), url: safeDocumentUrl(document.url),
-      documentType: optionalString(document.documentType), dateModified: optionalString(document.dateModified),
-    })),
-    structuredCriteria: criteria.map((criterion) => ({
-      title: String(criterion.title ?? criterion.name ?? "Кваліфікаційна вимога"),
-      description: optionalString(criterion.description),
-    })),
+    awardCriteria: optionalString(record.awardCriteria),
+    enquiryDeadline: optionalString(record.enquiryPeriod?.endDate),
+    complaintDeadline: optionalString(record.complaintPeriod?.endDate),
+    clarifications: normalizeClarifications(record.questions),
+    milestones: normalizeMilestones(record.milestones),
+    documents: normalizeDocuments(Array.isArray(record.documents) ? record.documents : []),
+    structuredCriteria: criteria.map((criterion) => {
+      const record2 = criterion as { requirementGroups?: unknown };
+      return {
+        title: String(criterion.title ?? criterion.name ?? "Кваліфікаційна вимога"),
+        description: optionalString(criterion.description),
+        numericRequirements: extractNumericRequirements(record2.requirementGroups),
+      };
+    }),
     itemCount: Array.isArray(record.items) ? record.items.length : 0,
     lots: Array.isArray(record.lots) && record.lots.length > 0 ? record.lots.map((lot: Record<string, unknown>) => {
       const lotVal = lot.value as { amount?: unknown; currency?: unknown; valueAddedTaxIncluded?: unknown } | undefined;
@@ -187,6 +202,92 @@ function normalizeTender(raw: ApiTender): NormalizedTender {
       };
     }) : undefined,
   };
+}
+
+/**
+ * Prozorro повертає повну історію версій документів: кожна редакція дублює
+ * попередні записи з тим самим id, але новим dateModified. Залишаємо лише
+ * актуальну версію кожного документа і викидаємо підписи sign.p7s — вони
+ * не містять змісту для аналізу.
+ */
+function normalizeDocuments(docs: Array<Record<string, unknown>>): NormalizedTender["documents"] {
+  const byId = new Map<string, { doc: Record<string, unknown>; modified: number }>();
+  for (const doc of docs) {
+    if (String(doc.title ?? "") === "sign.p7s") continue;
+    const id = String(doc.id ?? doc.title ?? crypto.randomUUID());
+    const modified = Date.parse(String(doc.dateModified ?? "")) || 0;
+    const previous = byId.get(id);
+    if (!previous || modified >= previous.modified) byId.set(id, { doc, modified });
+  }
+  return [...byId.values()].map(({ doc }) => ({
+    id: String(doc.id ?? crypto.randomUUID()),
+    title: String(doc.title ?? "Документ"),
+    format: optionalString(doc.format),
+    url: safeDocumentUrl(doc.url),
+    documentType: optionalString(doc.documentType),
+    dateModified: optionalString(doc.dateModified),
+  }));
+}
+
+function normalizeClarifications(questions: unknown): NormalizedTender["clarifications"] {
+  if (!Array.isArray(questions) || questions.length === 0) return undefined;
+  const clarifications = questions.slice(0, 5).map((entry) => {
+    const q = entry as Record<string, unknown>;
+    return {
+      title: optionalString(q.title),
+      question: optionalString(q.description),
+      answer: optionalString(q.answer),
+      date: optionalString(q.date),
+    };
+  });
+  return clarifications.some((item) => item.answer || item.question) ? clarifications : undefined;
+}
+
+function normalizeMilestones(milestones: unknown): NormalizedTender["milestones"] {
+  if (!Array.isArray(milestones) || milestones.length === 0) return undefined;
+  return milestones.slice(0, 6).map((entry) => {
+    const m = entry as Record<string, unknown>;
+    return {
+      type: optionalString(m.type),
+      title: optionalString(m.title),
+      description: optionalString(m.description),
+      dueDate: optionalString(m.dueDate),
+    };
+  });
+}
+
+/**
+ * Витягує числові пороги кваліфікаційних критеріїв (досвід у днях, оборот,
+ * кількість працівників) зі structured criteria — LLM-промпт використовує
+ * їх як точні доказові межі замість заголовків критеріїв.
+ */
+function extractNumericRequirements(requirementGroups: unknown): NormalizedTender["structuredCriteria"][number]["numericRequirements"] {
+  if (!Array.isArray(requirementGroups) || requirementGroups.length === 0) return undefined;
+  const requirements: NonNullable<NormalizedTender["structuredCriteria"][number]["numericRequirements"]> = [];
+  for (const group of requirementGroups.slice(0, 3)) {
+    const inner = (group as { requirements?: unknown }).requirements;
+    if (!Array.isArray(inner)) continue;
+    for (const req of inner.slice(0, 4)) {
+      const r = req as Record<string, unknown>;
+      const expected = formatNumericRequirementValue(r.expectedValue);
+      const min = formatNumericRequirementValue(r.minValue);
+      const max = formatNumericRequirementValue(r.maxValue);
+      if (!expected && !min && !max) continue;
+      requirements.push({
+        title: optionalString(r.title),
+        expectedValue: expected,
+        minValue: min,
+        maxValue: max,
+      });
+    }
+  }
+  return requirements.length > 0 ? requirements : undefined;
+}
+
+function formatNumericRequirementValue(value: unknown): string | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return String(value);
+  return undefined;
 }
 
 function optionalString(value: unknown): string | undefined { return typeof value === "string" && value.length > 0 ? value : undefined; }

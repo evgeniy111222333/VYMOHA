@@ -1,7 +1,8 @@
 import zlib from "node:zlib";
 import type { AnalysisTier } from "@/src/domain/billing/packages";
 import { estimateOpenAICostMicrousd } from "@/src/domain/billing/cost";
-import type { CompanyProfile, TenderAnalysis } from "@/src/domain/tender/types";
+import type { CompanyProfile, TenderAnalysis, TenderDocument } from "@/src/domain/tender/types";
+import { extractTextFromWordDoc, isWordBinary } from "./doc-extract";
 import { buildTenderPrompt } from "./prompt";
 import { TENDER_ANALYSIS_SCHEMA, type EnhancedTenderPayload } from "./tender-schema";
 
@@ -118,7 +119,7 @@ function extractTextFromDocx(buffer: ArrayBuffer): string | null {
   return null;
 }
 
-async function downloadGeminiDocument(url: string, title: string): Promise<ProcessedDocument> {
+async function downloadGeminiDocument(url: string, title: string, format?: string): Promise<ProcessedDocument> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
     if (!res.ok) {
@@ -134,6 +135,7 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
     const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, 5));
     const isPdf = head.length >= 5 && PDF_MAGIC.every((b, i) => b === head[i]);
     const isZip = head.length >= 4 && ZIP_MAGIC.every((b, i) => b === head[i]);
+    const isLegacyWord = isWordBinary(buf) || /\.doc(?:\s|$)/i.test(title) || format === "application/msword";
 
     if (isPdf) {
       console.log("[download] PDF ready", { byteLength: buf.byteLength });
@@ -148,6 +150,24 @@ async function downloadGeminiDocument(url: string, title: string): Promise<Proce
         data: typeof btoa === "function" ? btoa(binary) : Buffer.from(bytes).toString("base64"),
         byteLength: buf.byteLength,
       };
+    }
+
+    // Word 97-2003: Gemini cannot ingest the binary container, so the text
+    // is extracted locally from the OLE2 piece table instead of dropping
+    // the main bidding document.
+    if (isLegacyWord) {
+      const extractedText = extractTextFromWordDoc(buf);
+      if (extractedText && extractedText.length > 100) {
+        console.log("[download] DOC ready", { byteLength: buf.byteLength, extractedCharacters: extractedText.length });
+        return {
+          kind: "text",
+          mimeType: "text/plain",
+          text: extractedText,
+          byteLength: buf.byteLength,
+        };
+      }
+      console.warn("[download] DOC extraction yielded no text", { byteLength: buf.byteLength });
+      return null;
     }
 
     if (isZip || title.toLowerCase().endsWith(".docx")) {
@@ -197,7 +217,7 @@ export async function enhanceAnalysis(input: {
   const files = input.analysis.tender.documents
     .filter((document) => document.url && isSupportedDocument(document.format, document.title))
     .slice(0, expert ? 8 : 5);
-  const prompt = buildTenderPrompt(input.analysis, input.company);
+  const prompt = buildTenderPrompt(input.analysis, input.company, files);
 
   if (isGeminiModel(input.model)) {
     return callGemini({ ...input, expert, files, prompt });
@@ -213,7 +233,7 @@ async function callOpenAI(input: {
   tier: Exclude<AnalysisTier, "quick">;
   model: string;
   expert: boolean;
-  files: Array<{ url?: string; format?: string; title: string }>;
+  files: TenderDocument[];
   prompt: string;
 }): Promise<{ analysis: TenderAnalysis; usage: AIUsage }> {
   const { expert, files, prompt, model, apiKey, safetyIdentifier, analysis, company, tier } = input;
@@ -247,7 +267,9 @@ async function callOpenAI(input: {
   const output = payload.output?.flatMap((item) => item.content ?? []).find((item) => item.type === "output_text")?.text;
   if (!output) throw new OpenAIAnalysisError();
   const parsed = parseStructuredOutput(output);
-  return finalizeAnalysis({ analysis, company, parsed, model, usage: normalizeOpenAIUsage(payload, model), tier });
+  // OpenAI завантажує файли сам: надіслані файли вважаються прочитаними.
+  const downloadedTitles = new Set(files.map((document) => document.title));
+  return finalizeAnalysis({ analysis, company, parsed, model, usage: normalizeOpenAIUsage(payload, model), tier, sentDocuments: files, downloadedTitles });
 }
 
 async function callGemini(input: {
@@ -258,7 +280,7 @@ async function callGemini(input: {
   tier: Exclude<AnalysisTier, "quick">;
   model: string;
   expert: boolean;
-  files: Array<{ url?: string; format?: string; title: string }>;
+  files: TenderDocument[];
   prompt: string;
 }): Promise<{ analysis: TenderAnalysis; usage: AIUsage }> {
   const { expert, files, prompt, model, apiKey, analysis, company, tier } = input;
@@ -268,10 +290,11 @@ async function callGemini(input: {
 
   const processedFiles = await Promise.all(files.map(async (document) => {
     if (!document.url) return null;
-    return downloadGeminiDocument(document.url, document.title);
+    return downloadGeminiDocument(document.url, document.title, document.format);
   }));
 
-  const downloadedCount = processedFiles.filter(Boolean).length;
+  const downloadedTitles = new Set(files.filter((_, index) => processedFiles[index]).map((document) => document.title));
+  const downloadedCount = downloadedTitles.size;
   console.log(`[gemini:${analysisId}] Documents prepared`, { downloadedCount, fileCount: files.length });
 
   const parts: Array<Record<string, unknown>> = [{ text: prompt }];
@@ -373,7 +396,7 @@ async function callGemini(input: {
 
     try {
       const parsed = parseStructuredOutput(output);
-      return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier });
+      return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier, sentDocuments: files, downloadedTitles });
     } catch (parseErr) {
       console.warn(`[gemini:${analysisId}] Structured response parsing failed`, { model: currentModel, finishReason: finishReason ?? "unknown", errorType: parseErr instanceof Error ? parseErr.name : "unknown" });
       lastError = new OpenAIAnalysisError("AI-провайдер повернув неповний структурований звіт.");
@@ -417,7 +440,49 @@ function normalizeGeminiUsage(payload: GeminiResponse, model: string): AIUsage {
   return { model, inputTokens, cachedInputTokens, outputTokens, costMicrousd: estimateOpenAICostMicrousd({ model, inputTokens, cachedInputTokens, outputTokens }) };
 }
 
-import { calculateWeightedMatrixScore } from "@/src/domain/tender/scoring";
+import { calculateWeightedMatrixScore, scoreTender } from "@/src/domain/tender/scoring";
+import { buildCompetitionSentence, buildMarketSentence } from "@/src/domain/tender/analyzer";
+
+/** LLM-ризики про відсутній профіль постачальника дублюють детермінований profile-cap. */
+const PROFILE_RISK_PATTERN = /профіл|постачальник[ау]? не (надано|відом|зістав)/i;
+const VERDICT_SENTENCE_PATTERN = /(^|\s)[^.!?]*(?:вердикт|verdict|\bno-go\b|\bmaybe\b|\bgo\b|заходит)[^.!?]*[.!?]/gi;
+
+function stripVerdictSentences(text: string): string {
+  return text.replace(VERDICT_SENTENCE_PATTERN, " ").replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Детермінована звірка documentCoverage: модель фізично не може позначити
+ * файл як "read"/"partial", якщо він не був обраний для аналізу (slice) або
+ * не завантажився. Незалежно від галюцинацій моделі, статус таких файлів
+ * примусово стає "unavailable" з чесною причиною.
+ */
+function buildDeterministicCoverage(
+  allDocuments: TenderDocument[],
+  sentDocuments: TenderDocument[],
+  downloadedTitles: ReadonlySet<string>,
+  modelCoverage: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>,
+): Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }> {
+  const sentTitles = new Set(sentDocuments.map((doc) => doc.title));
+  const modelByTitle = new Map(modelCoverage.map((item) => [item.title, item]));
+  return allDocuments.map((doc) => {
+    if (!sentTitles.has(doc.title)) {
+      return { title: doc.title, status: "unavailable", notes: "Файл не увійшов до ліміту документів цього режиму аналізу." };
+    }
+    if (!downloadedTitles.has(doc.title)) {
+      return { title: doc.title, status: "unavailable", notes: "Файл не вдалося завантажити або розібрати для аналізу." };
+    }
+    const model = modelByTitle.get(doc.title);
+    if (model?.status === "unavailable") {
+      return { title: doc.title, status: "unavailable", notes: model.notes || "Модель не змогла проаналізувати файл." };
+    }
+    return {
+      title: doc.title,
+      status: model?.status === "read" ? "read" : "partial",
+      notes: model?.notes || "Документ передано моделі для аналізу.",
+    };
+  });
+}
 
 function finalizeAnalysis(input: {
   analysis: TenderAnalysis;
@@ -426,15 +491,40 @@ function finalizeAnalysis(input: {
   model: string;
   usage: AIUsage;
   tier: Exclude<AnalysisTier, "quick">;
+  sentDocuments: TenderDocument[];
+  downloadedTitles: ReadonlySet<string>;
 }): { analysis: TenderAnalysis; usage: AIUsage } {
   const { analysis, company, parsed, usage, tier } = input;
   const hasCompany = Boolean(company?.cpvCodes.length || company?.capabilities.length);
+  const evaluatedAt = new Date(analysis.generatedAt);
+  const analysisTime = Number.isFinite(evaluatedAt.getTime()) ? evaluatedAt : new Date();
   const deadline = analysis.tender.deadline ? new Date(analysis.tender.deadline) : null;
-  const submissionOpen = !deadline || deadline.getTime() > Date.now();
+  const submissionOpen = !deadline || deadline.getTime() > analysisTime.getTime();
+
+  // Use the same instant as the initial deterministic analysis. Re-evaluating
+  // against wall-clock time can turn an already generated report into a false
+  // no-go while the provider request is still being processed or replayed.
+  const baseBreakdown = scoreTender(analysis.tender, company, analysisTime, analysis.buyerContext, analysis.marketContext);
+
+  // "No supplier profile" is deterministic system knowledge, not a tender
+  // risk: strip LLM copies. Shown in the report as an honest medium risk,
+  // but excluded from the matrix — the anonymous score cap already prices
+  // the missing profile in once.
+  const llmRisks = parsed.risks.filter((risk) => !PROFILE_RISK_PATTERN.test(risk.title) && !PROFILE_RISK_PATTERN.test(risk.id));
+  const matrixRisks = llmRisks;
+  const displayRisks = hasCompany ? llmRisks : llmRisks.concat([{
+    id: "profile-unknown",
+    title: "Профіль постачальника не зіставлено",
+    description: "Без CPV-кодів і можливостей компанії сервіс не може підтвердити відповідність предмету закупівлі.",
+    level: "medium" as const,
+    mitigation: "Додайте профіль компанії та повторіть аналіз перед рішенням про участь.",
+    evidence: { label: "Профіль компанії", source: analysis.tender.sourceUrl, evidenceType: "business_inference" as const },
+  }]);
 
   const matrixResult = calculateWeightedMatrixScore({
+    baseBreakdown,
     requirements: parsed.requirements,
-    risks: parsed.risks,
+    risks: matrixRisks,
     requiredDocumentsChecklist: parsed.requiredDocumentsChecklist,
     hasCompanyProfile: hasCompany,
     submissionOpen,
@@ -443,37 +533,53 @@ function finalizeAnalysis(input: {
   const score = matrixResult.score;
   const verdict = matrixResult.verdict;
   const sourceUrl = analysis.tender.sourceUrl;
+
+  // Deterministic coverage: the model cannot claim "read" for a file that
+  // was never sent or failed to download.
+  const documentCoverage = buildDeterministicCoverage(
+    analysis.tender.documents, input.sentDocuments, input.downloadedTitles, parsed.documentCoverage,
+  );
+
+  // Missing key documents cap the report's own honesty claim.
+  const unavailableDocs = documentCoverage.filter((doc) => doc.status === "unavailable").length;
+  const confidencePenalty = unavailableDocs > 0 ? 15 : 0;
+  const verdictLabel = verdict === "go" ? "можна заходити" : verdict === "no-go" ? "не заходити" : "потрібна ручна перевірка";
+  const cleanedSummary = stripVerdictSentences(parsed.summary).slice(0, 800);
+  const marketSentence = buildMarketSentence(analysis.tender, analysis.marketContext);
+  const competitionSentence = buildCompetitionSentence(analysis.competitionRisk);
   return {
     analysis: {
       ...analysis,
       score,
-      confidence: Math.max(25, Math.min(99, Math.round(parsed.confidence))),
+      confidence: Math.max(25, Math.min(99, Math.round(parsed.confidence) - confidencePenalty)),
       scoreFactors: matrixResult.factors,
       verdict,
-      summary: parsed.summary
-        .replace(/фінальний вердикт — ['"]?(?:maybe|go|no-go)['"]?/gi, `фінальний вердикт — '${verdict === "no-go" ? "не заходити" : verdict === "go" ? "можна заходити" : "потрібна перевірка"}'`)
-        .slice(0, 900),
+      summary: `Вердикт: ${verdictLabel} (бал ${score}/100). ${cleanedSummary}${marketSentence}${competitionSentence}`,
       requirements: parsed.requirements.slice(0, 32).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } })),
       risks: (() => {
-        const list = parsed.risks.slice(0, 20).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } }));
+        const list = displayRisks.slice(0, 20).map((item) => ({ ...item, evidence: { ...item.evidence, source: sourceUrl } }));
         if (!submissionOpen || (analysis.tender.status && analysis.tender.status !== "active.tendering")) {
           const hasDeadlineRisk = list.some((r) => r.id === "deadline-closed" || r.title.toLowerCase().includes("дедлайн"));
           if (!hasDeadlineRisk) {
             list.unshift({
               id: "deadline-closed",
               level: "critical",
+              isStopFactor: true,
               title: "Дедлайн подання пропозицій минув",
               description: `Прийом пропозицій за цією закупівлею закритий Prozorro (статус: ${analysis.tender.status}). Нову заявку подати вже неможливо.`,
               mitigation: "Додати замовника в моніторинг на нові закупівлі.",
               evidence: { label: "Дані Prozorro", source: sourceUrl, excerpt: `Статус Prozorro: ${analysis.tender.status}` },
             });
+          } else {
+            const deadlineRisk = list.find((r) => r.id === "deadline-closed" || r.title.toLowerCase().includes("дедлайн"));
+            if (deadlineRisk) deadlineRisk.isStopFactor = true;
           }
         }
         return list;
       })(),
       nextActions: parsed.nextActions.slice(0, 8),
       questionsToBuyer: parsed.questionsToBuyer.slice(0, 8),
-      documentCoverage: parsed.documentCoverage.slice(0, 16),
+      documentCoverage,
       requiredDocumentsChecklist: Array.isArray(parsed.requiredDocumentsChecklist)
         ? parsed.requiredDocumentsChecklist.slice(0, 24)
         : undefined,

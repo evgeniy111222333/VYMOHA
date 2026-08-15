@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AnalyzerForm } from "@/components/analyzer/AnalyzerForm";
 import { Faq } from "@/components/marketing/Faq";
 import { FeatureGrid } from "@/components/marketing/FeatureGrid";
@@ -6,6 +7,11 @@ import { Pricing } from "@/components/marketing/Pricing";
 import { ProductProof } from "@/components/marketing/ProductProof";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
 
 export default function HomePage() {
   return (

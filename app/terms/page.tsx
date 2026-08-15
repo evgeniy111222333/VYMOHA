@@ -1,5 +1,18 @@
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
+
+export const metadata: Metadata = {
+  title: "Умови використання",
+  description: "Умови використання сервісу Вимога та обмеження відповідальності під час аналізу тендерів Prozorro.",
+  alternates: { canonical: "/terms" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Умови використання — Вимога",
+    description: "Умови використання сервісу Вимога та обмеження відповідальності.",
+    url: "/terms",
+  },
+};
 
 export default function TermsPage() {
   return (

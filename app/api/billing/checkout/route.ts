@@ -1,6 +1,5 @@
 import { runtimeEnv } from "@/db/runtime";
 import { getCreditPackage } from "@/src/domain/billing/packages";
-import { createStripeCheckout } from "@/src/infrastructure/payments/stripe";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { attachCheckoutSession, createPaymentOrder } from "@/src/infrastructure/storage/billing";
 import { apiError, HttpError, requireRequestUser } from "@/src/lib/http";
@@ -22,13 +21,18 @@ export async function POST(request: Request): Promise<Response> {
     const pack = getCreditPackage(parsed.data.packageId);
     if (!pack) throw new HttpError(404, "Пакет не знайдено.");
     const env = runtimeEnv();
-    if (!env.STRIPE_SECRET_KEY) throw new HttpError(503, "Оплата ще не підключена. Адміністратор має додати Stripe-ключі.");
-    const order = await createPaymentOrder(user.id, pack);
-    const baseUrl = env.APP_BASE_URL?.replace(/\/$/, "") || new URL(request.url).origin;
-    const checkout = await createStripeCheckout({
-      secretKey: env.STRIPE_SECRET_KEY, baseUrl, orderId: order.id, userId: user.id, email: user.email, pack,
-    });
-    await attachCheckoutSession(order.id, checkout.id);
-    return Response.json({ data: checkout }, { headers: { "cache-control": "private, no-store" } });
+    
+    if (!env.MONOBANK_JAR_ID) {
+      throw new HttpError(503, "Оплата тимчасово недоступна. Адміністратор має додати MONOBANK_JAR_ID.");
+    }
+    
+    const order = await createPaymentOrder(user.id, pack, "monobank");
+    const shortCode = order.id.split("-")[0]!.toUpperCase(); 
+    await attachCheckoutSession(order.id, shortCode);
+    
+    const amountUah = pack.amountMinor / 100;
+    const url = `https://send.monobank.ua/jar/${env.MONOBANK_JAR_ID}?a=${amountUah}&text=${shortCode}`;
+    
+    return Response.json({ data: { url } }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) { return apiError(error); }
 }

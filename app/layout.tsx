@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { MotionEffects } from "@/components/site/MotionEffects";
+import { SITE_URL } from "@/src/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vymoha.app"),
+  metadataBase: SITE_URL,
   title: { default: "Вимога — перевірка тендерів Prozorro", template: "%s — Вимога" },
   description: "Знайдіть стоп-фактори, документи й дедлайни тендера Prozorro до того, як команда витратить день на підготовку.",
   applicationName: "Вимога",
   keywords: ["Prozorro", "аналіз тендерної документації", "перевірка тендерної пропозиції", "тендери Україна"],
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website", locale: "uk_UA", siteName: "Вимога",
     title: "Вимога — тендер вартий вашого часу?",

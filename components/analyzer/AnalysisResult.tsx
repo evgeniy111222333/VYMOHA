@@ -5,6 +5,8 @@ import { AlertCircle, AlertTriangle, ArrowUpRight, BellPlus, Calendar, Check, Ch
 import type { TenderAnalysis } from "@/src/domain/tender/types";
 import { formatSignals } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
+import { MarketBenchmarkCard } from "./MarketBenchmarkCard";
+import { CompetitionRiskBanner } from "./CompetitionRiskBanner";
 import { ScoreExplanation } from "./ScoreExplanation";
 import { TenderDocumentList } from "./TenderDocumentList";
 
@@ -101,6 +103,10 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         </div>
       </div>
 
+      {analysis.competitionRisk && analysis.competitionRisk.level !== "low" && (
+        <CompetitionRiskBanner risk={analysis.competitionRisk} />
+      )}
+
       <div className="tender-passport-bar">
         <div className="passport-item">
           <div className="passport-item__icon"><Calendar size={16} /></div>
@@ -147,6 +153,13 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
 
       <div className="analysis-context-grid">
         <ScoreExplanation analysis={analysis} />
+        {analysis.marketContext && (
+          <MarketBenchmarkCard
+            context={analysis.marketContext}
+            expectedAmount={analysis.tender.amount}
+            currency={analysis.tender.currency}
+          />
+        )}
         {analysis.buyerContext && <BuyerContextCard context={analysis.buyerContext} />}
       </div>
 

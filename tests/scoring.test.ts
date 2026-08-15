@@ -87,12 +87,73 @@ describe("tender scoring", () => {
     expect(score).toBe(100);
     expect(verdict).toBe("go");
 
+    const baseBreakdown = { score: 60, confidence: 50, verdict: "maybe" as const, factors: [] };
+    const res = calculateWeightedMatrixScore({
+      baseBreakdown,
+      requirements: [{ category: "technical", status: "met" }],
+      risks: [],
+      hasCompanyProfile: true,
+      submissionOpen: true,
+    });
+    expect(res.score).toBe(60);
+
+    // Critical risk without a stop factor: heavy penalty, but the tender
+    // stays reviewable instead of being force-blocked.
+    const criticalNonStop = calculateWeightedMatrixScore({
+      requirements: [{ category: "statutory", status: "met" }],
+      risks: [{ level: "critical", title: "Штраф 20%" }],
+      hasCompanyProfile: true,
+      submissionOpen: true,
+    });
+    expect(criticalNonStop.score).toBe(80);
+    expect(criticalNonStop.verdict).toBe("maybe");
+
+    // Critical stop factor caps the score to 10 and forces no-go.
     const stopped = calculateWeightedMatrixScore({
       requirements: [{ category: "statutory", status: "met" }],
-      risks: [{ level: "critical" }],
+      risks: [{ level: "critical", title: "Дискваліфікація без альтернатив", isStopFactor: true }],
       hasCompanyProfile: true,
       submissionOpen: true,
     });
     expect(stopped.verdict).toBe("no-go");
+    expect(stopped.score).toBeLessThanOrEqual(10);
+    expect(stopped.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "critical-cap" }),
+    ]));
+  });
+
+  it("caps the total risk deduction at 40 so an open tender cannot hit zero from medium risks", () => {
+    const risks = [
+      { id: "r0", title: "Штраф", level: "high" as const },
+      { id: "r1", title: "Пеня", level: "high" as const },
+      { id: "r2", title: "Відстрочка", level: "high" as const },
+      { id: "r3", title: "Розірвання", level: "high" as const },
+    ];
+    const result = calculateWeightedMatrixScore({
+      baseBreakdown: { score: 90, confidence: 70, verdict: "maybe" as const, factors: [] },
+      requirements: [],
+      risks,
+      hasCompanyProfile: true,
+      submissionOpen: true,
+    });
+    // 4 × 10 = 40 raw risk points, capped at 30 with a -10 adjustment factor.
+    expect(result.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "risk-cap", points: -10 }),
+    ]));
+    expect(result.score).toBe(60);
+    expect(result.verdict).toBe("maybe");
+  });
+
+  it("adds deterministic enquiry and award criteria requirements for normalized tenders", () => {
+    const tender = tenderFixture({
+      enquiryDeadline: "2026-07-30T00:00:00+03:00",
+      awardCriteria: "lowestCost",
+      clarifications: [{ title: "Про меню", question: "Яке меню?", answer: "Дивіться додаток", date: "2026-08-02" }],
+    });
+    const quick = analyzeTender(tender, undefined, now, undefined, "quick");
+    expect(quick.requirements.some((item) => item.id === "enquiry-deadline" && item.status === "missing")).toBe(true);
+    expect(quick.requirements.some((item) => item.id === "award-criteria" && item.status === "met")).toBe(true);
+    expect(quick.requirements.some((item) => item.id === "clarifications")).toBe(true);
+    expect(quick.risks.some((item) => item.id === "enquiry-closed")).toBe(true);
   });
 });

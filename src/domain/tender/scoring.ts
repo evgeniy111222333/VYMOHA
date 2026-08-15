@@ -1,4 +1,4 @@
-import type { BuyerContext, CompanyProfile, NormalizedTender, ScoreFactor, Verdict } from "./types";
+import type { BuyerContext, CompanyProfile, MarketContext, NormalizedTender, ScoreFactor, Verdict } from "./types";
 
 export type ScoreBreakdown = { score: number; confidence: number; verdict: Verdict; factors: ScoreFactor[] };
 
@@ -16,6 +16,7 @@ export function scoreTender(
   company?: CompanyProfile,
   now = new Date(),
   buyerContext?: BuyerContext,
+  marketContext?: MarketContext,
 ): ScoreBreakdown {
   let score = 54;
   let confidence = 58;
@@ -99,6 +100,18 @@ export function scoreTender(
     }
   }
 
+  // Ринковий сигнал: історично в цього замовника / за цим CPV майже завжди
+  // один учасник — ознака заточення або неконкурентної закупівлі.
+  if (submissionOpen && marketContext && marketContext.singleBidderRate !== null && marketContext.singleBidderRate >= 0.5) {
+    const percent = Math.round(marketContext.singleBidderRate * 100);
+    score -= 8;
+    factors.push({
+      id: "market-single-bidder", label: "Зазвичай 1 учасник", points: -8,
+      description: `${percent}% аналогічних закупівель (${marketContext.scope === "buyer" ? "цього замовника" : `CPV ${marketContext.cpvClass}`}) мали не більше однієї пропозиції.`,
+      kind: "negative",
+    });
+  }
+
   const rawScore = Math.max(0, Math.min(100, Math.round(score)));
   const profileAwareScore = companyCpvMatch ? rawScore : Math.min(rawScore, 69);
   if (profileAwareScore < rawScore) {
@@ -119,8 +132,14 @@ export function scoreTender(
 }
 
 export type MultiVectorScoringInput = {
+  /**
+   * Deterministic score calculated from Prozorro metadata before the model
+   * reads attached documents. Optional so the matrix remains independently
+   * testable; production AI analysis always supplies it.
+   */
+  baseBreakdown?: ScoreBreakdown;
   requirements: Array<{ category: string; status: "met" | "missing" | "review" | "unknown" }>;
-  risks: Array<{ title?: string; level: "critical" | "high" | "medium" | "low" }>;
+  risks: Array<{ title?: string; level: "critical" | "high" | "medium" | "low"; isStopFactor?: boolean }>;
   requiredDocumentsChecklist?: Array<{ category: string }>;
   hasCompanyProfile: boolean;
   submissionOpen: boolean;
@@ -133,52 +152,102 @@ export function calculateWeightedMatrixScore(input: MultiVectorScoringInput): { 
   const techReqs = reqs.filter((r) => r.category === "technical");
   const finReqs = reqs.filter((r) => r.category === "financial");
 
+  // Without a supplier profile every requirement lands in "review" not
+  // because the tender is deficient but because the supplier is unknown —
+  // the profile cap already prices that in, so vectors count at half weight.
+  const vectorScale = input.hasCompanyProfile ? 1 : 0.5;
+
   function calcVector(arr: typeof reqs, maxPoints: number): number {
-    if (arr.length === 0) return maxPoints;
-    const met = arr.filter((r) => r.status === "met").length;
+    if (arr.length === 0) return 0;
     const review = arr.filter((r) => r.status === "review" || r.status === "unknown").length;
-    return Math.round((met * maxPoints + review * maxPoints * 0.5) / arr.length);
+    const missing = arr.filter((r) => r.status === "missing").length;
+    const penalty = Math.round((((missing * maxPoints) + (review * maxPoints * 0.5)) / arr.length) * vectorScale);
+    return -penalty;
   }
 
-  const vStatutory = calcVector(statutoryReqs, 25);
-  const vQual = calcVector(qualReqs, 35);
-  const vTech = calcVector(techReqs, 25);
-  const vFin = calcVector(finReqs, 15);
+  const vStatutory = calcVector(statutoryReqs, 10);
+  const vQual = calcVector(qualReqs, 15);
+  const vTech = calcVector(techReqs, 15);
+  const vFin = calcVector(finReqs, 5);
 
-  const factors: ScoreFactor[] = [];
-  factors.push({ id: "ai-qual", label: "Кваліфікація та досвід", points: vQual, description: `Зіставлення з профілем компанії (до ${35} балів)`, kind: "base" });
-  factors.push({ id: "ai-statutory", label: "Юридичні вимоги", points: vStatutory, description: `Статутні документи (до ${25} балів)`, kind: "base" });
-  factors.push({ id: "ai-tech", label: "Технічна відповідність", points: vTech, description: `Характеристики предмета (до ${25} балів)`, kind: "base" });
-  factors.push({ id: "ai-fin", label: "Фінансові умови", points: vFin, description: `Гарантії та оплата (до ${15} балів)`, kind: "base" });
+  const baseBreakdown: ScoreBreakdown = input.baseBreakdown ?? {
+    score: 100,
+    confidence: 100,
+    verdict: "go",
+    factors: [],
+  };
+  const factors = [...baseBreakdown.factors];
+  
+  if (vQual < 0) factors.push({ id: "ai-qual", label: "Прогалини в кваліфікації/досвіді", points: vQual, description: `Знайдено невідповідності (${vQual} балів)`, kind: "negative" });
+  if (vStatutory < 0) factors.push({ id: "ai-statutory", label: "Прогалини в юридичних вимогах", points: vStatutory, description: `Знайдено невідповідності (${vStatutory} балів)`, kind: "negative" });
+  if (vTech < 0) factors.push({ id: "ai-tech", label: "Технічна невідповідність", points: vTech, description: `Знайдено невідповідності (${vTech} балів)`, kind: "negative" });
+  if (vFin < 0) factors.push({ id: "ai-fin", label: "Невідповідність фінансових умов", points: vFin, description: `Знайдено невідповідності (${vFin} балів)`, kind: "negative" });
 
-  let raw = vStatutory + vQual + vTech + vFin;
+  // The quick pass caps the anonymous score at 69 before the AI runs. The
+  // matrix re-applies that cap itself, so restore the raw base here to
+  // avoid charging the missing profile twice.
+  let baseScore = baseBreakdown.score;
+  if (!input.hasCompanyProfile) {
+    const profileCap = baseBreakdown.factors.find((f) => f.id === "profile-cap");
+    if (profileCap && profileCap.points < 0) baseScore = baseBreakdown.score - profileCap.points;
+  }
 
+  /**
+   * Advisory risk weights: contract-clause findings reduce the score but
+   * only a stop factor can block participation. Total deduction is capped
+   * so a live tender with a stack of medium clauses cannot hit zero.
+   */
+  const RISK_LEVEL_POINTS: Record<"critical" | "high" | "medium" | "low", number> = { critical: 20, high: 10, medium: 5, low: 2 };
+  const MAX_RISK_DEDUCTION = 30;
+  let riskDeduction = 0;
   for (const [i, risk] of (input.risks || []).entries()) {
     const riskTitle = risk.title || "Знайдено ризик";
-    if (risk.level === "critical") { raw -= 25; factors.push({ id: `risk-${i}`, label: riskTitle, points: -25, description: "Критичний ризик", kind: "negative" }); }
-    else if (risk.level === "high") { raw -= 14; factors.push({ id: `risk-${i}`, label: riskTitle, points: -14, description: "Високий ризик", kind: "negative" }); }
-    else if (risk.level === "medium") { raw -= 7; factors.push({ id: `risk-${i}`, label: riskTitle, points: -7, description: "Середній ризик", kind: "negative" }); }
-    else if (risk.level === "low") { raw -= 3; factors.push({ id: `risk-${i}`, label: riskTitle, points: -3, description: "Низький ризик", kind: "negative" }); }
+    const points = RISK_LEVEL_POINTS[risk.level] ?? 0;
+    riskDeduction += points;
+    factors.push({ id: `risk-${i}`, label: riskTitle, points: -points, description: risk.isStopFactor ? "Критичний стоп-фактор" : `${risk.level} ризик`, kind: "negative" });
+  }
+  if (riskDeduction > MAX_RISK_DEDUCTION) {
+    factors.push({
+      id: "risk-cap", label: "Обмеження впливу ризиків", points: MAX_RISK_DEDUCTION - riskDeduction,
+      description: "Сумарний штраф ризиків обмежено 30 балами; блокування потребує стоп-фактора.", kind: "limit",
+    });
+    riskDeduction = MAX_RISK_DEDUCTION;
   }
 
-  const hasCriticalStop = (input.risks || []).some((r) => r.level === "critical") || !input.submissionOpen;
+  const raw = baseScore + vStatutory + vQual + vTech + vFin - riskDeduction;
+
+  const risks = input.risks || [];
+  const hasStopFactor = risks.some((r) => r.level === "critical" && r.isStopFactor === true);
+  const hasCriticalStop = hasStopFactor || !input.submissionOpen;
+  const hasAnyCritical = risks.some((r) => r.level === "critical");
   let score = Math.max(0, Math.min(input.hasCompanyProfile ? 100 : 69, Math.round(raw)));
 
   if (!input.hasCompanyProfile && score === 69 && raw > 69) {
-    factors.push({ id: "profile-cap", label: "Немає підтвердженого профілю", points: 69 - raw, description: "Без профілю компанії система обмежує максимальний бал.", kind: "limit" });
+    if (!factors.some(f => f.id === "profile-cap")) {
+      factors.push({ id: "profile-cap", label: "Немає підтвердженого профілю", points: 69 - raw, description: "Без профілю компанії система обмежує максимальний бал.", kind: "limit" });
+    }
   }
 
   if (!input.submissionOpen) {
-    factors.push({ id: "closed", label: "Подання завершено", points: -score, description: "Дедлайн минув, участь неможлива.", kind: "negative" });
+    if (!factors.some(f => f.id === "closed")) {
+      factors.push({ id: "closed", label: "Подання завершено", points: -score, description: "Дедлайн минув, участь неможлива.", kind: "negative" });
+    }
     score = 0;
-  } else if (hasCriticalStop) {
+  } else if (hasStopFactor) {
     const deduction = score - Math.min(score, 10);
     if (deduction > 0) {
-      factors.push({ id: "critical-cap", label: "Блокуючий фактор", points: -deduction, description: "Критичні ризики обмежують доцільність участі.", kind: "negative" });
+      factors.push({ id: "critical-cap", label: "Блокуючий стоп-фактор", points: -deduction, description: "Участь юридично або фінансово неможлива.", kind: "negative" });
     }
     score = Math.min(score, 10);
   }
 
-  const verdict: Verdict = hasCriticalStop ? "no-go" : score >= 75 ? "go" : score >= 45 ? "maybe" : "no-go";
+  // no-go is a deterministic decision: participation must be impossible
+  // (stop factor / closed submission). Any critical finding still blocks a
+  // "go" recommendation, but everything short of a stop factor stays
+  // reviewable — a low score with open submission means "fix before
+  // bidding", not "never".
+  const verdict: Verdict = hasCriticalStop
+    ? "no-go"
+    : score >= 75 && !hasAnyCritical ? "go" : "maybe";
   return { score, verdict, factors };
 }

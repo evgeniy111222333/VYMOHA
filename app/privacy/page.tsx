@@ -1,5 +1,18 @@
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
+
+export const metadata: Metadata = {
+  title: "Політика конфіденційності",
+  description: "Як Вимога обробляє, зберігає та захищає дані користувачів сервісу аналізу тендерів Prozorro.",
+  alternates: { canonical: "/privacy" },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Політика конфіденційності — Вимога",
+    description: "Як Вимога обробляє, зберігає та захищає дані користувачів.",
+    url: "/privacy",
+  },
+};
 
 export default function PrivacyPage() {
   return (

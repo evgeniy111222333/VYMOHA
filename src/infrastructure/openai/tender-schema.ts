@@ -16,11 +16,12 @@ export type EnhancedTenderPayload = {
 const evidenceSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["label", "source", "excerpt"],
+  required: ["label", "source", "excerpt", "evidenceType"],
   properties: {
     label: { type: "string" },
     source: { type: "string" },
     excerpt: { type: "string" },
+    evidenceType: { type: "string", enum: ["direct_quote", "business_inference", "assumption"] },
   },
 };
 
@@ -53,11 +54,12 @@ export const TENDER_ANALYSIS_SCHEMA = {
       maxItems: 32,
       items: {
         type: "object", additionalProperties: false,
-        required: ["id", "title", "description", "category", "status", "evidence"],
+        required: ["id", "title", "description", "category", "status", "matchType", "evidence"],
         properties: {
           id: { type: "string" }, title: { type: "string" }, description: { type: "string" },
           category: { type: "string", enum: ["deadline", "financial", "legal", "technical", "experience", "document"] },
           status: { type: "string", enum: ["met", "missing", "review", "unknown"] },
+          matchType: { type: "string", enum: ["exact_table_match", "general_clause", "not_applicable"] },
           evidence: evidenceSchema,
         },
       },
@@ -67,10 +69,14 @@ export const TENDER_ANALYSIS_SCHEMA = {
       maxItems: 20,
       items: {
         type: "object", additionalProperties: false,
-        required: ["id", "title", "description", "level", "mitigation", "evidence"],
+        required: ["id", "title", "description", "level", "isStopFactor", "mitigation", "evidence"],
         properties: {
           id: { type: "string" }, title: { type: "string" }, description: { type: "string" },
           level: { type: "string", enum: ["critical", "high", "medium", "low"] },
+          isStopFactor: {
+            type: "boolean",
+            description: "true лише якщо участь юридично неможлива або фінансово руйнівна (дедлайн минув, вимога без альтернатив). Штрафні санкції договору — максимум high, тобто false.",
+          },
           mitigation: { type: "string" }, evidence: evidenceSchema,
         },
       },

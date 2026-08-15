@@ -1,2 +1,22 @@
-import type { MetadataRoute } from "next"; import { guides } from "@/src/content/guides";
-export default function sitemap(): MetadataRoute.Sitemap { const base = "https://vymoha.vymoha-platform.workers.dev"; return [{ url: base, priority: 1, changeFrequency: "weekly" }, { url: `${base}/analyze`, priority: 0.9, changeFrequency: "weekly" }, { url: `${base}/guides`, priority: 0.8, changeFrequency: "weekly" }, ...guides.map((guide) => ({ url: `${base}/guides/${guide.slug}`, priority: 0.7, changeFrequency: "monthly" as const })), { url: `${base}/privacy`, priority: 0.2, changeFrequency: "yearly" }, { url: `${base}/terms`, priority: 0.2, changeFrequency: "yearly" }]; }
+import type { MetadataRoute } from "next";
+import { guides } from "@/src/content/guides";
+import { SITE_ORIGIN } from "@/src/lib/seo";
+
+const CONTENT_UPDATED_AT = new Date("2026-08-01T00:00:00.000Z");
+const LEGAL_UPDATED_AT = new Date("2026-08-03T00:00:00.000Z");
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [
+    { url: SITE_ORIGIN, priority: 1, changeFrequency: "weekly" },
+    { url: `${SITE_ORIGIN}/analyze`, priority: 0.9, changeFrequency: "weekly" },
+    { url: `${SITE_ORIGIN}/guides`, priority: 0.8, changeFrequency: "weekly", lastModified: CONTENT_UPDATED_AT },
+    ...guides.map((guide) => ({
+      url: `${SITE_ORIGIN}/guides/${guide.slug}`,
+      priority: 0.7,
+      changeFrequency: "monthly" as const,
+      lastModified: CONTENT_UPDATED_AT,
+    })),
+    { url: `${SITE_ORIGIN}/privacy`, priority: 0.2, changeFrequency: "yearly", lastModified: LEGAL_UPDATED_AT },
+    { url: `${SITE_ORIGIN}/terms`, priority: 0.2, changeFrequency: "yearly", lastModified: LEGAL_UPDATED_AT },
+  ];
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertBodySize, assertSameOrigin, clientAddress, hasAllowedFileSignature, safeFilename, SecurityError, sha256 } from "@/src/lib/security";
+import { assertBodySize, assertSameOrigin, clientAddress, hasAllowedFileSignature, safeFilename, SecurityError, sha256, timingSafeSecretEqual } from "@/src/lib/security";
 
 describe("request security", () => {
   it("blocks cross-origin mutations", () => {
@@ -18,6 +18,11 @@ describe("request security", () => {
     expect(safeFilename("../секрет<script>.pdf")).toBe("секрет_script_.pdf");
     expect(await sha256("stable")).toMatch(/^[a-f0-9]{64}$/);
     expect(clientAddress(new Request("https://vymoha.app", { headers: { "cf-connecting-ip": "203.0.113.4" } }))).toBe("203.0.113.4");
+  });
+
+  it("compares webhook secrets without accepting near matches", async () => {
+    await expect(timingSafeSecretEqual("secret-value", "secret-value")).resolves.toBe(true);
+    await expect(timingSafeSecretEqual("secret-value", "secret-valuE")).resolves.toBe(false);
   });
 
   it("validates uploaded file signatures instead of trusting MIME alone", () => {

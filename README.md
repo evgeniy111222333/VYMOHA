@@ -39,8 +39,11 @@ npm run dev
 
 | Змінна | Призначення |
 | --- | --- |
-| `OPENAI_API_KEY` | Поглиблений аналіз PDF; без ключа використовується структурований режим |
-| `OPENAI_MODEL` | Модель Responses API, за замовчуванням `gpt-5.6-terra` |
+| `GEMINI_API_KEY` | Поглиблений аналіз файлів через Gemini; без ключа доступний лише структурований режим |
+| `GEMINI_MODEL_STANDARD` | Gemini-модель для поглибленого аналізу, за замовчуванням `gemini-3.6-flash` |
+| `GEMINI_MODEL_EXPERT` | Gemini-модель для експертного аналізу, за замовчуванням `gemini-3.6-flash` |
+| `MONOBANK_JAR_ID` | ID банки Monobank для створення посилання на оплату |
+| `MONOBANK_WEBHOOK_SECRET` | Секрет у URL webhook-а Monobank |
 | `RESEND_API_KEY` | Email-повідомлення моніторингу |
 | `NOTIFICATION_FROM` | Підтверджений відправник email |
 | `APP_BASE_URL` | Канонічна адреса середовища |
@@ -75,3 +78,17 @@ worker/              Cloudflare entrypoint та security headers
 ```
 
 Фоновий monitoring handler закладений у Worker і локально налаштований на запуск кожні 15 хвилин. Під час зовнішнього деплою cron trigger потрібно підтвердити в налаштуваннях Cloudflare.
+
+## Поточна production-конфігурація
+
+Поглиблений аналіз виконує Gemini API. Налаштуйте `GEMINI_API_KEY`,
+`GEMINI_MODEL_STANDARD` і `GEMINI_MODEL_EXPERT`; типовою моделлю є
+`gemini-3.6-flash`. Для сумісності з уже розгорнутим Worker код тимчасово
+приймає застарілі назви `OPENAI_API_KEY`, `OPENAI_MODEL_STANDARD` і
+`OPENAI_MODEL_EXPERT`, але нові секрети слід створювати лише з префіксом
+`GEMINI_`.
+
+Оплата виконується через Monobank. Для production потрібні
+`MONOBANK_JAR_ID` та довгий випадковий `MONOBANK_WEBHOOK_SECRET`; webhook
+приймає тільки платежі у гривні, що точно збігаються з сумою створеного
+замовлення.

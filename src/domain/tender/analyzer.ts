@@ -1,5 +1,5 @@
 import { scoreTender } from "./scoring";
-import type { BuyerContext, CompanyProfile, NormalizedTender, TenderAnalysis, TenderRequirement, TenderRisk } from "./types";
+import type { BuyerContext, CompanyProfile, CompetitionRisk, MarketContext, NormalizedTender, TenderAnalysis, TenderRequirement, TenderRisk } from "./types";
 
 const formatter = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 2 });
 
@@ -11,8 +11,10 @@ export function analyzeTender(
   now = new Date(),
   buyerContext?: BuyerContext,
   mode: AnalysisMode = "quick",
+  marketContext?: MarketContext,
+  competitionRisk?: CompetitionRisk,
 ): TenderAnalysis {
-  const score = scoreTender(tender, company, now, buyerContext);
+  const score = scoreTender(tender, company, now, buyerContext, marketContext);
   const requirements = buildRequirements(tender, company, now);
   const risks = buildRisks(tender, company, now, mode);
   const missingCount = requirements.filter((item) => item.status === "missing").length;
@@ -26,7 +28,9 @@ export function analyzeTender(
     confidence: score.confidence,
     scoreFactors: score.factors,
     buyerContext,
-    summary: buildSummary(score.verdict, missingCount + reviewCount, tender, now, mode),
+    marketContext,
+    competitionRisk,
+    summary: buildSummary(score.verdict, missingCount + reviewCount, tender, now, mode, marketContext, competitionRisk),
     generatedAt: now.toISOString(),
     mode: "structured",
     requirements,
@@ -42,15 +46,41 @@ function isDeadlineClosed(tender: NormalizedTender, now: Date): boolean {
   return Number.isFinite(deadline.getTime()) && deadline.getTime() < now.getTime();
 }
 
-function buildSummary(verdict: TenderAnalysis["verdict"], openCount: number, tender: NormalizedTender, now: Date, mode: AnalysisMode): string {
+function buildSummary(verdict: TenderAnalysis["verdict"], openCount: number, tender: NormalizedTender, now: Date, mode: AnalysisMode, marketContext?: MarketContext, competitionRisk?: CompetitionRisk): string {
   const suffix = mode === "quick"
     ? " Повний аналіз доступний у платних рівнях — кнопка нижче."
     : "";
-  if (verdict === "go") return `Закупівля виглядає перспективною. Перед поданням підтвердьте ${openCount} пунктів, які потребують ручної перевірки.${suffix}`;
-  if (verdict === "maybe") return `Потенціал є, але рішення залежить від ${Math.max(1, openCount)} відкритих вимог. Не формуйте пропозицію до їх перевірки.${suffix}`;
-  return isDeadlineClosed(tender, now)
-    ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
-    : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.";
+  const marketSentence = buildMarketSentence(tender, marketContext);
+  const competitionSentence = buildCompetitionSentence(competitionRisk);
+  const base = verdict === "go"
+    ? `Закупівля виглядає перспективною. Перед поданням підтвердьте ${openCount} пунктів, які потребують ручної перевірки.`
+    : verdict === "maybe"
+      ? `Потенціал є, але рішення залежить від ${Math.max(1, openCount)} відкритих вимог. Не формуйте пропозицію до їх перевірки.`
+      : isDeadlineClosed(tender, now)
+        ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
+        : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.";
+  return `${base}${suffix}${marketSentence}${competitionSentence}`;
+}
+
+export function buildMarketSentence(tender: NormalizedTender, marketContext?: MarketContext): string {
+  if (!marketContext || marketContext.medianDiscount === null || !tender.amount) return "";
+  const discountPercent = Math.round(marketContext.medianDiscount * 100);
+  const price = new Intl.NumberFormat("uk-UA", { maximumFractionDigits: 0 }).format(Math.round(tender.amount * (1 - marketContext.medianDiscount)));
+  const scope = marketContext.scope === "buyer" ? "цього замовника" : `ринку за CPV ${marketContext.cpvClass}`;
+  return ` Ринковий орієнтир: на основі ${marketContext.sampleSize} аналогічних закупівель ${scope} медіанний дисконт −${discountPercent}%, цільова ціна ≈ ${price} ${tender.currency ?? "UAH"}.`;
+}
+
+export function buildCompetitionSentence(competitionRisk?: CompetitionRisk): string {
+  if (!competitionRisk || competitionRisk.level === "low") return "";
+  const labels = competitionRisk.flags
+    .filter((flag) => flag.severity === "warning")
+    .slice(0, 3)
+    .map((flag) => flag.title)
+    .join(", ");
+  if (!labels) return "";
+  return competitionRisk.level === "high"
+    ? ` Ознаки ризику для учасника: ${labels}.`
+    : ` Помірні ознаки ризику для учасника: ${labels}.`;
 }
 
 function buildRequirements(tender: NormalizedTender, company: CompanyProfile | undefined, now: Date): TenderRequirement[] {
@@ -78,6 +108,49 @@ function buildRequirements(tender: NormalizedTender, company: CompanyProfile | u
       category: "financial",
       status: "review",
       evidence: { label: "Guarantee", source },
+    });
+  }
+
+  if (tender.enquiryDeadline) {
+    const enquiryDate = new Date(tender.enquiryDeadline);
+    const enquiryOpen = Number.isFinite(enquiryDate.getTime()) && enquiryDate.getTime() > now.getTime();
+    requirements.push({
+      id: "enquiry-deadline",
+      title: "Дедлайн запитів на уточнення",
+      description: `Запитати зміни документації до ${new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(enquiryDate)}`,
+      category: "deadline",
+      status: enquiryOpen ? "met" : "missing",
+      evidence: { label: "Період уточнень", source, excerpt: tender.enquiryDeadline },
+    });
+  }
+
+  if (tender.awardCriteria) {
+    const criteriaLabels: Record<string, string> = {
+      lowestCost: "найнижчу ціну",
+      priceQuality: "співвідношення ціна/якість",
+      costQuality: "співвідношення ціна/якість",
+      lifeCycleCost: "вартість життєвого циклу",
+      weightedOutcomes: "зважені результати",
+      fixedEnactedBudget: "затверджений бюджет",
+    };
+    requirements.push({
+      id: "award-criteria",
+      title: "Критерій визначення переможця",
+      description: `Переможця визначають за ${criteriaLabels[tender.awardCriteria] ?? tender.awardCriteria}`,
+      category: "technical",
+      status: "met",
+      evidence: { label: "awardCriteria", source, excerpt: tender.awardCriteria },
+    });
+  }
+
+  if (tender.clarifications?.length) {
+    requirements.push({
+      id: "clarifications",
+      title: `Відповіді замовника на запити (${tender.clarifications.length})`,
+      description: "Перегляньте опубліковані уточнення — вони можуть змінювати вимоги документації",
+      category: "legal",
+      status: "review",
+      evidence: { label: "Запити та відповіді", source },
     });
   }
 
@@ -152,6 +225,18 @@ function buildRisks(tender: NormalizedTender, company: CompanyProfile | undefine
       description: `Опубліковано ${tender.documents.length} файлів; частина вимог може бути в додатках.`, level: "medium",
       mitigation: "Перевірте всі актуальні версії та відокремте підписані файли від застарілих.",
       evidence: { label: "Документи", source: tender.sourceUrl },
+    });
+  }
+
+  const enquiryDate = tender.enquiryDeadline ? new Date(tender.enquiryDeadline) : null;
+  const deadlineOpen = deadline ? deadline.getTime() > now.getTime() : false;
+  if (enquiryDate && Number.isFinite(enquiryDate.getTime()) && enquiryDate.getTime() <= now.getTime() && deadlineOpen) {
+    risks.push({
+      id: "enquiry-closed", title: "Період запитів на уточнення завершено",
+      description: "Нові запити до замовника вже не приймаються; розбіжності ТД можна вирішувати лише скаргою.",
+      level: "low",
+      mitigation: "Якщо документація суперечить закону, єдиний інструмент — скарга до дедлайну complaintPeriod.",
+      evidence: { label: "Період уточнень", source: tender.sourceUrl, excerpt: tender.enquiryDeadline },
     });
   }
 
