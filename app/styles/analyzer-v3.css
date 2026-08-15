@@ -282,6 +282,26 @@
 .competition-flags strong { display: block; font-size: 12px; margin-bottom: 3px; }
 .competition-flags span { display: block; font-size: 11px; line-height: 1.45; opacity: 0.92; }
 
+/* Contract risk matrix + price analysis (expert) */
+.contract-risk-matrix, .price-analysis { margin-top: 18px; }
+.contract-risk-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 14px; }
+.contract-risk-item { padding: 12px 14px; border: 1px solid #ded7ca; border-radius: 8px; background: #fffdf6; }
+.contract-risk-item__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.contract-risk-cat { font: 700 9px var(--font-mono), monospace; text-transform: uppercase; letter-spacing: .08em; color: #8a6d3b; }
+.contract-risk-item h4 { margin: 0 0 4px; font-size: 12px; }
+.contract-risk-item p { margin: 0 0 8px; color: #68655e; font-size: 10px; line-height: 1.45; }
+.contract-risk-item q { display: block; padding: 6px 8px; border-left: 2px solid #d2ca9b; background: #f3efdd; color: #6b5d20; font-size: 9px; line-height: 1.4; }
+.price-analysis-list { display: flex; flex-direction: column; }
+.price-position { padding: 12px 16px; border-bottom: 1px solid #ddd6c8; }
+.price-position:last-child { border-bottom: 0; }
+.price-position h4 { margin: 0 0 8px; font-size: 12px; }
+.price-position__cells { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.price-position__cells span { min-width: 110px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #ded7ca; border-radius: 6px; background: #fffdf6; }
+.price-position__cells small { color: #77736b; font-size: 8px; }
+.price-position__cells b { font-size: 12px; }
+.price-position p { margin: 0 0 8px; color: #68655e; font-size: 10px; line-height: 1.45; }
+.price-position q { display: block; padding: 6px 8px; border-left: 2px solid #d2ca9b; background: #f3efdd; color: #6b5d20; font-size: 9px; line-height: 1.4; }
+
 /* Revision Items Timeline */
 .rev-timeline-list { display: flex; flex-direction: column; gap: 10px; }
 .rev-item { border-radius: 10px; background: #181c18; border: 1px solid #282e27; overflow: hidden; transition: border-color .2s ease; }

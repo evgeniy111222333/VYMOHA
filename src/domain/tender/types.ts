@@ -58,6 +58,28 @@ export type CompetitionRisk = {
   sampleSize: number;
 };
 
+export type ContractRiskCategory = "fine" | "penalty" | "force_majeure" | "termination" | "payment" | "guarantee" | "other";
+export type ContractRiskSeverity = "low" | "medium" | "high" | "critical";
+
+export type ContractRiskItem = {
+  id: string;
+  category: ContractRiskCategory;
+  title: string;
+  description: string;
+  severity: ContractRiskSeverity;
+  evidence: Evidence;
+};
+
+export type PricePosition = {
+  id: string;
+  position: string;
+  quantity: string | null;
+  unitPrice: string | null;
+  totalPrice: string | null;
+  note: string;
+  evidence: Evidence;
+};
+
 /**
  * Конкурентний бенчмарк: агрегат по історичних завершених закупівлях
  * (той самий CPV / регіон). Відносні метрики (медіана дисконту, медіана
@@ -257,6 +279,8 @@ export type TenderAnalysis = {
   questionsToBuyer?: string[];
   documentCoverage?: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
   requiredDocumentsChecklist?: RequiredDocumentItem[];
+  contractRiskMatrix?: ContractRiskItem[];
+  priceAnalysis?: PricePosition[];
   revisionsAnalysis?: TenderRevisionsAnalysis;
   disclaimer: string;
   creditsCharged?: number;

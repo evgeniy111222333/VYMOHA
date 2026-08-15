@@ -1,4 +1,4 @@
-import type { RequiredDocumentItem, TenderRequirement, TenderRisk, Verdict } from "@/src/domain/tender/types";
+import type { ContractRiskItem, PricePosition, RequiredDocumentItem, TenderRequirement, TenderRisk, Verdict } from "@/src/domain/tender/types";
 
 export type EnhancedTenderPayload = {
   summary: string;
@@ -11,6 +11,11 @@ export type EnhancedTenderPayload = {
   questionsToBuyer: string[];
   documentCoverage: Array<{ title: string; status: "read" | "partial" | "unavailable"; notes: string }>;
   requiredDocumentsChecklist?: RequiredDocumentItem[];
+};
+
+export type ContractScanPayload = {
+  contractRiskMatrix: ContractRiskItem[];
+  priceAnalysis: PricePosition[];
 };
 
 const evidenceSchema = {
@@ -96,6 +101,51 @@ export const TENDER_ANALYSIS_SCHEMA = {
       type: "array",
       maxItems: 24,
       items: requiredDocumentItemSchema,
+    },
+  },
+} as const;
+
+/**
+ * Схема другого проходу expert-режиму — глибокий скан договору та специфікації.
+ * Продукує вичерпну матрицю ризиків договору по пунктах та аналіз цін по позиціях.
+ */
+export const CONTRACT_SCAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["contractRiskMatrix", "priceAnalysis"],
+  properties: {
+    contractRiskMatrix: {
+      type: "array",
+      maxItems: 24,
+      items: {
+        type: "object", additionalProperties: false,
+        required: ["id", "category", "title", "description", "severity", "evidence"],
+        properties: {
+          id: { type: "string" },
+          category: { type: "string", enum: ["fine", "penalty", "force_majeure", "termination", "payment", "guarantee", "other"] },
+          title: { type: "string" },
+          description: { type: "string" },
+          severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
+          evidence: evidenceSchema,
+        },
+      },
+    },
+    priceAnalysis: {
+      type: "array",
+      maxItems: 40,
+      items: {
+        type: "object", additionalProperties: false,
+        required: ["id", "position", "note", "evidence"],
+        properties: {
+          id: { type: "string" },
+          position: { type: "string" },
+          quantity: { type: "string" },
+          unitPrice: { type: "string" },
+          totalPrice: { type: "string" },
+          note: { type: "string" },
+          evidence: evidenceSchema,
+        },
+      },
     },
   },
 } as const;

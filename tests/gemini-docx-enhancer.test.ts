@@ -66,7 +66,7 @@ describe("Gemini enhancer DOCX handling", () => {
         analysis: base,
         apiKey: "fake-gemini-key",
         safetyIdentifier: "safe-user",
-        tier: "expert",
+        tier: "deep",
         model: "gemini-3.6-flash",
       });
 
@@ -136,7 +136,7 @@ describe("Gemini enhancer DOCX handling", () => {
         analysis: base,
         apiKey: "fake-gemini-key",
         safetyIdentifier: "safe-user",
-        tier: "expert",
+        tier: "deep",
         model: "gemini-3.6-flash",
       });
 

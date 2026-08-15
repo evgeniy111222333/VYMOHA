@@ -60,6 +60,32 @@ ${lines.join("\n")}
 Це статистичні сигнали з відкритих даних, не оцінка законності дій замовника. Згадуй їх у risks як довідку, але не стверджуй «заточеність» чи «корупцію».`;
 }
 
+/**
+ * Промпт другого проходу expert-режиму: глибокий юридичний скан проєкту
+ * договору та специфікації. Це окремий виклик із вищим рівнем роздуму.
+ */
+export function buildContractScanPrompt(analysis: TenderAnalysis): string {
+  const tender = analysis.tender;
+  const structured = JSON.stringify({
+    title: tender.title, buyer: tender.buyer, amount: tender.amount,
+    currency: tender.currency, vatIncluded: tender.vatIncluded,
+    cpvCode: tender.cpvCode, cpvLabel: tender.cpvLabel, itemCount: tender.itemCount,
+  });
+  return `Ти — юрист-контрактник, що готує постачальника до участі в закупівлі. Проведи ГЛИБОКИЙ аудит проєкту договору та специфікації.
+
+ЗАКУПІВЛЯ: ${structured}
+
+Завдання:
+1. contractRiskMatrix — вичерпна матриця ризиків договору ПО ПУНКТАХ. Для кожного ризику: category (fine | penalty | force_majeure | termination | payment | guarantee | other), title (назва пункту), description (суть і конкретний розмір/умова), severity (low | medium | high | critical), evidence з ТОЧНОЮ цитатою з файлу договору.
+2. priceAnalysis — по КОЖНІЙ позиції специфікації: position (назва), quantity (кількість, якщо вказано), unitPrice (ціна за одиницю, якщо вказано), totalPrice (підсумок, якщо вказано), note (зауваження/ризик/брак даних), evidence з цитатою зі специфікації.
+
+Правила:
+- Цитуй ТІЛЬКИ з наданих файлів. Не вигадуй цифри.
+- Якщо ціни/кількості в документах нема — НЕ став «0» або «0.00»: просто пропусти відповідне поле. Якщо в специфікації є гранична/орієнтовна ціна — вкажи її в unitPrice, а не в note.
+- Не дублюй один і той самий ризик; групуй близькі пункти.
+- Відповідай тільки за заданою JSON-схемою.`;
+}
+
 export function buildTenderPrompt(analysis: TenderAnalysis, company?: CompanyProfile, documentsToSend?: TenderDocument[]): string {
   const tender = analysis.tender;
   const companyContext = company

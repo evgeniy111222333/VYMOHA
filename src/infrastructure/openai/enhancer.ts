@@ -1,10 +1,10 @@
 import zlib from "node:zlib";
 import type { AnalysisTier } from "@/src/domain/billing/packages";
 import { estimateOpenAICostMicrousd } from "@/src/domain/billing/cost";
-import type { CompanyProfile, TenderAnalysis, TenderDocument } from "@/src/domain/tender/types";
+import type { CompanyProfile, ContractRiskItem, PricePosition, TenderAnalysis, TenderDocument } from "@/src/domain/tender/types";
 import { extractTextFromWordDoc, isWordBinary } from "./doc-extract";
-import { buildTenderPrompt } from "./prompt";
-import { TENDER_ANALYSIS_SCHEMA, type EnhancedTenderPayload } from "./tender-schema";
+import { buildContractScanPrompt, buildTenderPrompt } from "./prompt";
+import { CONTRACT_SCAN_SCHEMA, TENDER_ANALYSIS_SCHEMA, type ContractScanPayload, type EnhancedTenderPayload } from "./tender-schema";
 
 type OpenAIResponse = {
   output?: Array<{ content?: Array<{ type?: string; text?: string; refusal?: string }> }>;
@@ -57,14 +57,16 @@ function toGeminiSchema(schema: Record<string, unknown>): Record<string, unknown
 
 // Gemini 3.x → thinkingLevel (MINIMAL/LOW/MEDIUM/HIGH). Повністю вимкнути не можна.
 // Gemini 2.5 і раніше → thinkingBudget (int: -1 dynamic, 0 off, 1024+ budget) + includeThoughts.
-function getGeminiThinkingConfig(model: string, expert: boolean): Record<string, unknown> {
+type ThinkingLevel = "MINIMAL" | "MEDIUM" | "HIGH";
+
+function getGeminiThinkingConfig(model: string, level: ThinkingLevel): Record<string, unknown> {
   const normalized = model.toLowerCase();
   if (/^gemini-3(\.|-|$)/.test(normalized)) {
-    return { thinkingConfig: { thinkingLevel: expert ? "MEDIUM" : "MINIMAL" } };
+    return { thinkingConfig: { thinkingLevel: level } };
   }
   return {
     thinkingConfig: {
-      thinkingBudget: expert ? -1 : 0,
+      thinkingBudget: level === "MINIMAL" ? 0 : -1,
       includeThoughts: true,
     },
   };
@@ -73,6 +75,8 @@ function getGeminiThinkingConfig(model: string, expert: boolean): Record<string,
 const MAX_INLINE_FILE_BYTES = 8 * 1024 * 1024; // 8 MB safety margin for Gemini
 const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d]; // %PDF-
 const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04]; // PK.. (DOCX)
+/** Expert читає всі підтримувані файли (з безпечним стелею), deep — до 5. */
+const MAX_EXPERT_FILES = 20;
 
 type ProcessedDocument =
   | { kind: "pdf"; mimeType: "application/pdf"; data: string; byteLength: number }
@@ -216,7 +220,7 @@ export async function enhanceAnalysis(input: {
   const expert = input.tier === "expert";
   const files = input.analysis.tender.documents
     .filter((document) => document.url && isSupportedDocument(document.format, document.title))
-    .slice(0, expert ? 8 : 5);
+    .slice(0, expert ? MAX_EXPERT_FILES : 5);
   const prompt = buildTenderPrompt(input.analysis, input.company, files);
 
   if (isGeminiModel(input.model)) {
@@ -294,10 +298,78 @@ async function callGemini(input: {
   }));
 
   const downloadedTitles = new Set(files.filter((_, index) => processedFiles[index]).map((document) => document.title));
-  const downloadedCount = downloadedTitles.size;
-  console.log(`[gemini:${analysisId}] Documents prepared`, { downloadedCount, fileCount: files.length });
+  console.log(`[gemini:${analysisId}] Documents prepared`, { downloadedCount: downloadedTitles.size, fileCount: files.length });
 
-  const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+  const fileParts = buildFileParts(processedFiles, files);
+
+  // Прохід 1 — основний аналіз.
+  const main = await callGeminiWithFallback({
+    apiKey, analysisId, model, tier,
+    parts: [{ text: prompt }, ...fileParts],
+    schema: TENDER_ANALYSIS_SCHEMA as unknown as Record<string, unknown>,
+    maxOutputTokens: expert ? 16_384 : 8_192,
+    thinkingLevel: expert ? "MEDIUM" : "MINIMAL",
+    timeoutMs: expert ? 150_000 : 90_000,
+  });
+  const result = finalizeAnalysis({
+    analysis, company, parsed: main.parsed as EnhancedTenderPayload, model: main.model,
+    usage: main.usage, tier, sentDocuments: files, downloadedTitles,
+  });
+
+  // Прохід 2 (лише expert) — глибокий скан договору та специфікації з HIGH-роздумом.
+  if (expert) {
+    try {
+      const scanPrompt = buildContractScanPrompt(analysis);
+      const scan = await callGeminiWithFallback({
+        apiKey, analysisId, model, tier,
+        parts: [{ text: scanPrompt }, ...fileParts],
+        schema: CONTRACT_SCAN_SCHEMA as unknown as Record<string, unknown>,
+        maxOutputTokens: 16_384,
+        thinkingLevel: "HIGH",
+        timeoutMs: 150_000,
+      });
+      const scanPayload = scan.parsed as ContractScanPayload;
+      const source = analysis.tender.sourceUrl;
+      result.analysis.contractRiskMatrix = (scanPayload.contractRiskMatrix ?? []).slice(0, 24)
+        .map((item): ContractRiskItem => ({ ...item, evidence: { ...item.evidence, source } }));
+      result.analysis.priceAnalysis = (scanPayload.priceAnalysis ?? []).slice(0, 40)
+        .map((item): PricePosition => ({
+          ...item,
+          quantity: normalizePriceValue(item.quantity),
+          unitPrice: normalizePriceValue(item.unitPrice),
+          totalPrice: normalizePriceValue(item.totalPrice),
+          evidence: { ...item.evidence, source },
+        }));
+      result.usage = sumAIUsage(result.usage, scan.usage);
+      console.log(`[gemini:${analysisId}] Contract scan complete`, {
+        risks: result.analysis.contractRiskMatrix.length, positions: result.analysis.priceAnalysis.length,
+      });
+    } catch (err) {
+      console.warn(`[gemini:${analysisId}] Contract scan failed — proceeding without matrix`, { errorType: err instanceof Error ? err.name : "unknown" });
+    }
+  }
+
+  return result;
+}
+
+/** Placeholder-значення, які модель ставить замість відсутньої ціни/кількості. */
+const PLACEHOLDER_PRICE_PATTERN = /^(?:0(?:[.,]0+)?|н\/д|не вказано|не зазначено|—|-|null|n\/a|немає|відсутн)(?:\s*грн)?$/i;
+
+/**
+ * Нормалізує значення ціни/кількості: «0», «0.00», «н/д» тощо → null,
+ * щоб не показувати користувачу фейковий нуль замість відсутніх даних.
+ */
+export function normalizePriceValue(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return null;
+  if (PLACEHOLDER_PRICE_PATTERN.test(trimmed)) return null;
+  return trimmed;
+}
+
+/** Будує частини запиту Gemini з уже завантажених документів (без повторного завантаження). */
+function buildFileParts(processedFiles: Array<ProcessedDocument>, files: TenderDocument[]): Array<Record<string, unknown>> {
+  const parts: Array<Record<string, unknown>> = [];
   processedFiles.forEach((file, index) => {
     if (!file) return;
     if (file.kind === "pdf") {
@@ -307,14 +379,42 @@ async function callGemini(input: {
       parts.push({ text: `\n\n--- Документ ${index + 1} (${files[index]?.title}) ---\n${file.text.slice(0, 40_000)}\n--- Кінець документа ${index + 1} ---` });
     }
   });
+  return parts;
+}
 
-  const DEFAULT_GEMINI_FALLBACKS = [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3-flash-preview",
-    "gemini-2.0-flash",
-  ];
+function sumAIUsage(a: AIUsage, b: AIUsage): AIUsage {
+  return {
+    model: a.model,
+    inputTokens: a.inputTokens + b.inputTokens,
+    cachedInputTokens: a.cachedInputTokens + b.cachedInputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    costMicrousd: a.costMicrousd + b.costMicrousd,
+  };
+}
+
+const DEFAULT_GEMINI_FALLBACKS = [
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-2.0-flash",
+];
+
+type GeminiCallSpec = {
+  apiKey: string;
+  analysisId: string;
+  model: string;
+  tier: string;
+  parts: Array<Record<string, unknown>>;
+  schema: Record<string, unknown>;
+  maxOutputTokens: number;
+  thinkingLevel: ThinkingLevel;
+  timeoutMs: number;
+};
+
+/** Один Gemini-виклик із фолбеком по моделях при квоті/порожньому виводі. */
+async function callGeminiWithFallback(spec: GeminiCallSpec): Promise<{ parsed: Record<string, unknown>; usage: AIUsage; model: string }> {
+  const { apiKey, analysisId, model, tier, parts, schema, maxOutputTokens, thinkingLevel, timeoutMs } = spec;
   const modelsToTry: string[] = [model];
   for (const m of DEFAULT_GEMINI_FALLBACKS) {
     if (!modelsToTry.includes(m)) modelsToTry.push(m);
@@ -328,10 +428,10 @@ async function callGemini(input: {
       contents: [{ role: "user", parts }],
       generationConfig: {
         response_mime_type: "application/json",
-        response_schema: toGeminiSchema(TENDER_ANALYSIS_SCHEMA as Record<string, unknown>),
-        max_output_tokens: expert ? 16_384 : 8_192,
+        response_schema: toGeminiSchema(schema),
+        max_output_tokens: maxOutputTokens,
         temperature: 0.0,
-        ...getGeminiThinkingConfig(currentModel, expert),
+        ...getGeminiThinkingConfig(currentModel, thinkingLevel),
       },
     };
 
@@ -348,7 +448,7 @@ async function callGemini(input: {
         method: "POST",
         headers: { "x-goog-api-key": apiKey, "content-type": "application/json" },
         body: bodyJson,
-        signal: AbortSignal.timeout(expert ? 150_000 : 90_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       payload = (await response.json()) as GeminiResponse;
     } catch (err) {
@@ -396,7 +496,7 @@ async function callGemini(input: {
 
     try {
       const parsed = parseStructuredOutput(output);
-      return finalizeAnalysis({ analysis, company, parsed, model: currentModel, usage: normalizeGeminiUsage(payload, currentModel), tier, sentDocuments: files, downloadedTitles });
+      return { parsed, usage: normalizeGeminiUsage(payload, currentModel), model: currentModel };
     } catch (parseErr) {
       console.warn(`[gemini:${analysisId}] Structured response parsing failed`, { model: currentModel, finishReason: finishReason ?? "unknown", errorType: parseErr instanceof Error ? parseErr.name : "unknown" });
       lastError = new OpenAIAnalysisError("AI-провайдер повернув неповний структурований звіт.");

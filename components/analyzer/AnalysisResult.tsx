@@ -7,6 +7,8 @@ import { formatSignals } from "@/src/domain/billing/presentation";
 import { BuyerContextCard } from "./BuyerContextCard";
 import { MarketBenchmarkCard } from "./MarketBenchmarkCard";
 import { CompetitionRiskBanner } from "./CompetitionRiskBanner";
+import { ContractRiskMatrix } from "./ContractRiskMatrix";
+import { PriceAnalysis } from "./PriceAnalysis";
 import { ScoreExplanation } from "./ScoreExplanation";
 import { TenderDocumentList } from "./TenderDocumentList";
 
@@ -202,6 +204,13 @@ export function AnalysisResult({ analysis, signedIn = false, initialCredits = 0,
         <section className="analysis-panel"><div className="analysis-panel__title"><div><FileCheck2 size={18} /><h3>Покриття документів</h3></div><span>{analysis.documentCoverage?.length ?? 0}</span></div><div className="coverage-list">{analysis.documentCoverage?.map((item) => <div key={`${item.title}:${item.status}`}><span className={`coverage-dot coverage-dot--${item.status}`} /><span><b>{item.title}</b><small>{item.notes}</small></span><i>{item.status === "read" ? "прочитано" : item.status === "partial" ? "частково" : "недоступно"}</i></div>)}</div></section>
         <section className="analysis-panel"><div className="analysis-panel__title"><div><MessageSquareText size={18} /><h3>Питання замовнику</h3></div></div><ol className="buyer-questions">{analysis.questionsToBuyer?.map((question) => <li key={question}>{question}</li>)}</ol></section>
       </div>}
+
+      {analysis.contractRiskMatrix && analysis.contractRiskMatrix.length > 0 && (
+        <ContractRiskMatrix items={analysis.contractRiskMatrix} />
+      )}
+      {analysis.priceAnalysis && analysis.priceAnalysis.length > 0 && (
+        <PriceAnalysis positions={analysis.priceAnalysis} />
+      )}
       <p className="analysis-disclaimer">{analysis.disclaimer}</p>
     </section>
   );
