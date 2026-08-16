@@ -255,13 +255,20 @@ section[id], div[id] { scroll-margin-top: 96px; }
    FOOTER v4 — величезний вотермарк
    ============================================================ */
 .site-footer__word {
-  margin-top: 64px; overflow: hidden; line-height: .78; user-select: none; pointer-events: none;
-  font: 800 clamp(84px, 17.5vw, 250px)/0.82 var(--font-display), sans-serif; letter-spacing: -.075em;
-  color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, .12);
-  mask-image: linear-gradient(180deg, #000 30%, transparent 96%);
-  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 96%);
+  margin-top: 80px; overflow: hidden; line-height: .82; user-select: none; pointer-events: none;
+  font: 760 clamp(96px, 19vw, 280px)/.84 var(--font-display), sans-serif; letter-spacing: -.08em;
+  color: rgba(255, 255, 255, .045); -webkit-text-stroke: 1.5px rgba(255, 255, 255, .14);
+  mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  text-shadow: 0 0 60px rgba(168, 255, 42, .06);
+  position: relative;
 }
-.site-footer__word em { font-style: normal; -webkit-text-stroke-color: rgba(168, 255, 42, .34); }
+.site-footer__word em { font-style: normal; color: rgba(168, 255, 42, .14); -webkit-text-stroke: 2px rgba(168, 255, 42, .55); }
+.site-footer__word::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 12%; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(168, 255, 42, .25) 50%, transparent 100%);
+  pointer-events: none;
+}
 .site-footer__grid a { position: relative; transition: color .2s ease; }
 .site-footer__grid a:hover { color: var(--signal); }
 
