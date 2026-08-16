@@ -1,4 +1,4 @@
-.auth-page { min-height: 100vh; padding: 34px clamp(20px, 4vw, 58px); color: #f4f1e8; background: #0c0f0c; }
+.auth-page { min-height: 100vh; padding: 34px clamp(28px, 5vw, 64px); color: #f4f1e8; background: #0c0f0c; }
 .auth-page::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 18% 38%, rgba(157,242,31,.11), transparent 30%), radial-gradient(circle at 78% 22%, rgba(91,74,255,.12), transparent 28%); }
 .auth-page__brand { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto 34px; }.auth-page__brand .brand__word { color: #f4f1e8; }
 .auth-layout { position: relative; z-index: 1; width: min(1120px, 100%); min-height: calc(100vh - 145px); margin: auto; display: grid; grid-template-columns: 1fr minmax(420px, .78fr); gap: clamp(50px, 8vw, 120px); align-items: center; }
