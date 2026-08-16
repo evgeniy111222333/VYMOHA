@@ -73,9 +73,7 @@ const worker = {
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
-    ctx.waitUntil(indexCompletedTenders(40).catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
-    ctx.waitUntil(backfillMarketIndex(60).catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
-    ctx.waitUntil(runSeoBackfillAndMonitor());
+    ctx.waitUntil(runAllBackfills());
   },
 };
 
@@ -111,6 +109,17 @@ function withSecurityHeaders(response: Response, request: Request): Response {
 
 function isNonIndexablePath(pathname: string): boolean {
   return ["/api", "/auth", "/dashboard"].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+/**
+ * Backfill-задачі виконуються послідовно, щоб не перевантажувати Prozorro
+ * одночасними запитами (rate-limit 429). Ринковий індекс → refresh активних
+ * → історія → оцінка здоров'я з алертами.
+ */
+async function runAllBackfills(): Promise<void> {
+  await indexCompletedTenders(30).catch(() => ({ indexed: 0, fetched: 0, completed: 0 }));
+  await backfillMarketIndex(50).catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false }));
+  await runSeoBackfillAndMonitor();
 }
 
 async function runSeoBackfillAndMonitor(): Promise<void> {
