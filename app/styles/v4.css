@@ -205,13 +205,16 @@ section[id], div[id] { scroll-margin-top: 96px; }
 
 .bento-card { transition: transform .4s var(--ease-out), box-shadow .4s var(--ease-out); }
 .bento-card:hover { transform: translateY(-5px); box-shadow: 0 22px 55px rgba(21, 26, 19, .14); }
+.bento-card:focus-visible { outline: 3px solid rgba(91, 74, 255, .35); outline-offset: 3px; }
 .bento-card--refund { animation: v4-glow-pulse 5s ease-in-out infinite; }
 
 .capability-matrix article { transition: background .3s ease, transform .35s var(--ease-out), box-shadow .35s ease; }
 .capability-matrix article:hover { box-shadow: 0 0 0 1px rgba(168, 255, 42, .28), 0 18px 44px rgba(0, 0, 0, .4); }
+.capability-matrix article:focus-visible { outline: 3px solid rgba(168, 255, 42, .5); outline-offset: 3px; }
 
 .price-card { transition: transform .35s var(--ease-out), box-shadow .35s ease; }
-.price-card__label { animation: v4-blink 2.6s ease-in-out infinite; }
+.price-card:focus-within { transform: translateY(-6px); }
+.price-card__label { animation: v4-blink 4.2s ease-in-out infinite; }
 
 /* бейдж «Найкраща точка входу» — по центру верху, без накладання на заголовок.
    `[data-spot] > *` вище змінює position на relative — тут явно повертаємо absolute. */
@@ -419,4 +422,5 @@ section[id], div[id] { scroll-margin-top: 96px; }
   .command-center { transform: none !important; }
   .faq-v3 .faq__answer { transition: none; }
   .button::after, .stat-card::after { display: none; }
+  .hero-v3__watermark { display: none; }
 }

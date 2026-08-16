@@ -1,6 +1,12 @@
 .auth-page { min-height: 100vh; padding: 34px clamp(28px, 5vw, 64px); color: #f4f1e8; background: #0c0f0c; }
 .auth-page::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 18% 38%, rgba(157,242,31,.11), transparent 30%), radial-gradient(circle at 78% 22%, rgba(91,74,255,.12), transparent 28%); }
-.auth-page__brand { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto 34px; }.auth-page__brand .brand__word { color: #f4f1e8; }
+.auth-page__brand { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto 34px; display: flex; align-items: center; gap: 12px; }
+.auth-page__brand .brand { gap: 12px; }
+.auth-page__brand .brand__word { color: #f4f1e8; font-size: 19px; letter-spacing: -.05em; font-weight: 760; }
+.auth-page__brand .brand__mark { width: 32px; height: 32px; padding: 0; border-radius: 8px; background: transparent; border: 1.5px solid rgba(168, 255, 42, .55); transform: rotate(-4deg); }
+.auth-page__brand .brand__mark i { background: var(--signal); }
+.auth-page__brand .brand__mark i:nth-child(2) { width: 72%; }
+.auth-page__brand .brand__mark i:nth-child(3) { width: 45%; }
 .auth-layout { position: relative; z-index: 1; width: min(1120px, 100%); min-height: calc(100vh - 145px); margin: auto; display: grid; grid-template-columns: 1fr minmax(420px, .78fr); gap: clamp(50px, 8vw, 120px); align-items: center; }
 .auth-layout > aside { max-width: 550px; }.auth-layout > aside .section-kicker { color: var(--acid); }.auth-layout > aside h2 { margin: 26px 0 24px; color: #f4f1e8; font: 700 clamp(54px, 6.5vw, 88px)/.91 var(--font-display); letter-spacing: -.075em; }.auth-layout > aside h2 em { color: var(--acid); font-style: normal; }.auth-layout > aside > p { max-width: 500px; color: #9da298; font-size: 15px; line-height: 1.65; }.auth-layout > aside ul { margin: 34px 0 0; padding: 22px 0 0; display: grid; gap: 12px; border-top: 1px solid rgba(255,255,255,.13); list-style: none; }.auth-layout > aside li { display: flex; gap: 10px; color: #c6cac1; font-size: 12px; }.auth-layout > aside li::before { content: ""; width: 6px; height: 6px; margin-top: 6px; flex: 0 0 auto; background: var(--acid); border-radius: 50%; }
 .auth-layout__panel { width: 100%; }.auth-panel { padding: 34px; color: var(--ink); background: #f5f1e7; border: 1px solid rgba(255,255,255,.18); border-radius: 20px; box-shadow: 18px 18px 0 rgba(157,242,31,.82), 0 35px 90px rgba(0,0,0,.34); }
