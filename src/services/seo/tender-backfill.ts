@@ -37,7 +37,7 @@ async function fetchFeedPage(offset?: string, limit = 100): Promise<FeedItem[]> 
     signal: AbortSignal.timeout(TIMEOUT_MS),
     cache: "no-store",
   });
-  if (!response.ok) return [];
+  if (!response.ok) throw new Error(`Prozorro feed unavailable: ${response.status}`);
   const envelope = (await response.json()) as {
     data?: Array<{ id?: unknown; tenderID?: unknown; status?: unknown; dateModified?: unknown }>;
   };
