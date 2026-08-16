@@ -264,11 +264,6 @@ section[id], div[id] { scroll-margin-top: 96px; }
   position: relative;
 }
 .site-footer__word em { font-style: normal; color: rgba(168, 255, 42, .14); -webkit-text-stroke: 2px rgba(168, 255, 42, .55); }
-.site-footer__word::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 12%; height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(168, 255, 42, .25) 50%, transparent 100%);
-  pointer-events: none;
-}
 .site-footer__grid a { position: relative; transition: color .2s ease; }
 .site-footer__grid a:hover { color: var(--signal); }
 

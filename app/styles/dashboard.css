@@ -305,9 +305,9 @@
 .bar-chart span { color: #555c55; font-size: 12px; }
 .bar-chart > div > div { height: 9px; overflow: hidden; background: #e7e9e2; border-radius: 99px; }
 .bar-chart i { height: 100%; display: block; border-radius: inherit; }
-.bar-chart .go { background: #5dba76; }
-.bar-chart .maybe { background: #dcbf52; }
-.bar-chart .no-go { background: #d36d62; }
+.bar-chart .bar--green { background: #5dba76; }
+.bar-chart .bar--amber { background: #dcbf52; }
+.bar-chart .bar--red { background: #d36d62; }
 .bar-chart b { font: 700 13px/1 var(--font-mono); text-align: right; }
 .analytics-insight { min-height: 330px; display: flex; flex-direction: column; color: #f6f6ef; background: #171a17; border-color: #171a17; }
 .analytics-insight > svg { color: var(--acid); }
