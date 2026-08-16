@@ -320,6 +320,11 @@ export async function writeAuditEvent(input: {
 }
 
 const PUBLIC_SUMMARY_TTL_SECONDS = 30 * 60;
+const TERMINAL_SUMMARY_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+function isTerminalTenderStatus(status: string): boolean {
+  return status === "complete" || status === "cancelled" || status === "unsuccessful";
+}
 
 export async function getPublicTenderSummary(externalId: string): Promise<PublicTenderSummary | null> {
   const database = await ensureDatabase();
@@ -340,7 +345,7 @@ export async function upsertPublicTenderSummary(input: {
 }): Promise<void> {
   const database = await ensureDatabase();
   const now = new Date();
-  const ttl = input.ttlSeconds ?? PUBLIC_SUMMARY_TTL_SECONDS;
+  const ttl = input.ttlSeconds ?? (isTerminalTenderStatus(input.analysis.tender.status) ? TERMINAL_SUMMARY_TTL_SECONDS : PUBLIC_SUMMARY_TTL_SECONDS);
   const expiresAt = Math.floor(now.getTime() / 1000) + ttl;
   const tender = input.analysis.tender;
   const visibleDocs = tender.documents.filter((doc) => doc.title.toLowerCase() !== "sign.p7s");
@@ -384,6 +389,147 @@ export async function isPublicSummaryFresh(summary: PublicTenderSummary, tenderD
   if (summary.expiresAt * 1000 <= Date.now()) return false;
   if (tenderDateModified && summary.tenderDateModified && summary.tenderDateModified !== tenderDateModified) return false;
   return true;
+}
+
+export type PublicTenderSitemapEntry = {
+  tenderExternalId: string;
+  status: string;
+  dateModified: string | null;
+  updatedAt: string;
+};
+
+export async function countPublicTenderSummaries(): Promise<number> {
+  const database = await ensureDatabase();
+  const row = await database.prepare("SELECT COUNT(*) AS c FROM public_tender_summaries").first<{ c: number }>();
+  return row?.c ?? 0;
+}
+
+export async function listPublicTenderSitemapEntries(limit: number, offset: number): Promise<PublicTenderSitemapEntry[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT tender_external_id, status, tender_date_modified, updated_at
+     FROM public_tender_summaries
+     ORDER BY tender_external_id ASC
+     LIMIT ? OFFSET ?`,
+  ).bind(Math.min(Math.max(Math.floor(limit), 1), 5000), Math.max(Math.floor(offset), 0)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    tenderExternalId: String(row.tender_external_id),
+    status: String(row.status),
+    dateModified: row.tender_date_modified ? String(row.tender_date_modified) : null,
+    updatedAt: String(row.updated_at),
+  }));
+}
+
+export type PublicTenderCard = {
+  tenderExternalId: string;
+  title: string;
+  buyer: string;
+  buyerEdrpou: string | null;
+  amountMinor: number | null;
+  currency: string | null;
+  deadline: string | null;
+  status: string;
+  cpvCode: string | null;
+  cpvLabel: string | null;
+  verdict: string;
+  score: number;
+  updatedAt: string;
+};
+
+export type TenderCpvGroup = {
+  cpv: string;
+  label: string;
+  count: number;
+};
+
+function mapPublicTenderCard(row: Record<string, unknown>): PublicTenderCard {
+  return {
+    tenderExternalId: String(row.tender_external_id),
+    title: String(row.title),
+    buyer: String(row.buyer),
+    buyerEdrpou: row.buyer_edrpou ? String(row.buyer_edrpou) : null,
+    amountMinor: row.amount_minor === null || row.amount_minor === undefined ? null : Number(row.amount_minor),
+    currency: row.currency ? String(row.currency) : null,
+    deadline: row.deadline ? String(row.deadline) : null,
+    status: String(row.status),
+    cpvCode: row.cpv_code ? String(row.cpv_code) : null,
+    cpvLabel: row.cpv_label ? String(row.cpv_label) : null,
+    verdict: String(row.verdict),
+    score: Number(row.score),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+export async function listTenderCpvGroups(limit = 60): Promise<TenderCpvGroup[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT substr(cpv_code, 1, 5) AS cpv, cpv_label, COUNT(*) AS c
+     FROM public_tender_summaries
+     WHERE cpv_code IS NOT NULL AND cpv_label IS NOT NULL
+     GROUP BY substr(cpv_code, 1, 5)
+     ORDER BY c DESC
+     LIMIT ?`,
+  ).bind(Math.min(Math.max(Math.floor(limit), 1), 500)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    cpv: String(row.cpv),
+    label: String(row.cpv_label),
+    count: Number(row.c),
+  }));
+}
+
+export async function listPublicTenderCardsByCpv(cpvPrefix: string, limit = 200): Promise<PublicTenderCard[]> {
+  const digits = cpvPrefix.replace(/\D/g, "").slice(0, 8);
+  if (!digits) return [];
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT tender_external_id, title, buyer, buyer_edrpou, amount_minor, currency, deadline,
+       status, cpv_code, cpv_label, verdict, score, updated_at
+     FROM public_tender_summaries
+     WHERE cpv_code LIKE ? || '%'
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  ).bind(digits, Math.min(Math.max(Math.floor(limit), 1), 500)).all<Record<string, unknown>>();
+  return result.results.map(mapPublicTenderCard);
+}
+
+export async function listPublicTenderCardsByBuyer(buyerEdrpou: string, limit = 200): Promise<PublicTenderCard[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT tender_external_id, title, buyer, buyer_edrpou, amount_minor, currency, deadline,
+       status, cpv_code, cpv_label, verdict, score, updated_at
+     FROM public_tender_summaries
+     WHERE buyer_edrpou = ?
+     ORDER BY updated_at DESC
+     LIMIT ?`,
+  ).bind(buyerEdrpou, Math.min(Math.max(Math.floor(limit), 1), 500)).all<Record<string, unknown>>();
+  return result.results.map(mapPublicTenderCard);
+}
+
+export type BuyerRef = { edrpou: string; name: string; count: number };
+
+export async function listDistinctBuyers(limit = 500): Promise<BuyerRef[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT buyer_edrpou, buyer, COUNT(*) AS c
+     FROM public_tender_summaries
+     WHERE buyer_edrpou IS NOT NULL
+     GROUP BY buyer_edrpou
+     ORDER BY c DESC
+     LIMIT ?`,
+  ).bind(Math.min(Math.max(Math.floor(limit), 1), 5000)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    edrpou: String(row.buyer_edrpou),
+    name: String(row.buyer),
+    count: Number(row.c),
+  }));
+}
+
+export async function getBuyerName(edrpou: string): Promise<string | null> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(
+    "SELECT buyer FROM public_tender_summaries WHERE buyer_edrpou = ? LIMIT 1",
+  ).bind(edrpou).first<Record<string, unknown>>();
+  return row?.buyer ? String(row.buyer) : null;
 }
 
 function mapPublicSummary(row: Record<string, unknown>): PublicTenderSummary {

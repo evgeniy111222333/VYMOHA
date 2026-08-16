@@ -149,6 +149,8 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_watches_active ON watches(active)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_rate_limits_reset_at ON rate_limits(reset_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_public_summaries_expires_at ON public_tender_summaries(expires_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_public_summaries_cpv_code ON public_tender_summaries(cpv_code)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_public_summaries_buyer_edrpou ON public_tender_summaries(buyer_edrpou)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_user_created ON audit_events(user_id, created_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_resource ON audit_events(resource_type, resource_id)"),
     database.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_accounts_email ON user_accounts(email)"),

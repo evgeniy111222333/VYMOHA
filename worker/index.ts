@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
 import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
+import { backfillTenderPages, refreshRecentTenderPages } from "@/src/services/seo/tender-backfill";
 import { canonicalHostRedirectUrl } from "@/src/lib/canonical-host";
 
 interface Env {
@@ -73,6 +74,8 @@ const worker = {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
     ctx.waitUntil(indexCompletedTenders().catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
     ctx.waitUntil(backfillMarketIndex().catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(refreshRecentTenderPages().catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(backfillTenderPages().catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
   },
 };
 

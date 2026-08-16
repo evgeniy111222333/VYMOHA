@@ -138,13 +138,31 @@ test("points robots sitemap and all sitemap URLs at the canonical domain", async
   const robotsText = await (await render("/robots.txt")).text();
   assert.match(robotsText, new RegExp(`Sitemap: ${origin.replace("/", "\\/")}\\/sitemap\\.xml`));
 
-  const sitemapText = await (await render("/sitemap.xml")).text();
+  const indexText = await (await render("/sitemap.xml")).text();
+  assert.match(indexText, /<sitemapindex[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
+  assert.match(indexText, /sitemap\.xml\?shard=static/);
+  assert.match(indexText, /sitemap\.xml\?shard=catalog/);
+
+  const sitemapText = await (await render("/sitemap.xml?shard=static")).text();
   assert.match(sitemapText, /<urlset[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
   const locs = [...sitemapText.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
   assert.ok(locs.length >= 7, `expected at least 7 URLs, got ${locs.length}`);
   assert.ok(locs.every((loc) => loc === origin || loc.startsWith(`${origin}/`)), `non-canonical URL found: ${locs.find((loc) => loc !== origin && !loc.startsWith(`${origin}/`))}`);
   assert.equal(locs[0], origin);
   assert.match(sitemapText, /<lastmod>2026-08-01<\/lastmod>/);
+});
+
+test("renders the tender catalog hub and returns a valid tender sitemap shard", async () => {
+  const hub = await render("/tendery");
+  assert.equal(hub.status, 200);
+  assert.match(await hub.text(), /Тендери/);
+
+  const shard = await render("/sitemap.xml?shard=0");
+  assert.equal(shard.status, 200);
+  const shardText = await shard.text();
+  assert.match(shardText, /<urlset[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
+  const locs = [...shardText.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  assert.ok(locs.every((loc) => loc === origin || loc.startsWith(`${origin}/`)));
 });
 
 test("renders custom authentication and protects the dashboard", async () => {
