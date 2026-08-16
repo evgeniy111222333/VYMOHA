@@ -163,7 +163,7 @@ export async function backfillTenderPages(budgetTenders = 300): Promise<TenderPa
   let finished = false;
 
   while (processed < budgetTenders) {
-    const page = await fetchFeedPage(cursor ?? undefined);
+    const page = await fetchFeedPage(cursor ?? undefined, Math.min(budgetTenders - processed, 100));
     if (page.length === 0) { finished = true; break; }
 
     processed += page.length;
