@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import { cpvDivisionName } from "@/src/content/cpv";
 import type { PublicTenderCard } from "@/src/infrastructure/storage/repository";
 
 const verdictLabels: Record<string, string> = {
@@ -29,7 +30,7 @@ export function TenderCard({ card }: { card: PublicTenderCard }) {
         {amount ? ` · ${amount}` : ""}
       </p>
       <div>
-        {card.cpvLabel ?? card.cpvCode ?? "Закупівля"}
+        {cpvDivisionName(card.cpvCode) ?? card.cpvLabel ?? card.cpvCode ?? "Закупівля"}
         <ArrowUpRight size={16} />
       </div>
     </a>

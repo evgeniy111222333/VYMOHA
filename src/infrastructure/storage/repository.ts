@@ -436,11 +436,7 @@ export type PublicTenderCard = {
   updatedAt: string;
 };
 
-export type TenderCpvGroup = {
-  cpv: string;
-  label: string;
-  count: number;
-};
+export type TenderDivision = { division: string; count: number };
 
 function mapPublicTenderCard(row: Record<string, unknown>): PublicTenderCard {
   return {
@@ -459,25 +455,6 @@ function mapPublicTenderCard(row: Record<string, unknown>): PublicTenderCard {
     updatedAt: String(row.updated_at),
   };
 }
-
-export async function listTenderCpvGroups(limit = 60): Promise<TenderCpvGroup[]> {
-  const database = await ensureDatabase();
-  const result = await database.prepare(
-    `SELECT substr(cpv_code, 1, 5) AS cpv, cpv_label, COUNT(*) AS c
-     FROM public_tender_summaries
-     WHERE cpv_code IS NOT NULL AND cpv_label IS NOT NULL
-     GROUP BY substr(cpv_code, 1, 5)
-     ORDER BY c DESC
-     LIMIT ?`,
-  ).bind(Math.min(Math.max(Math.floor(limit), 1), 500)).all<Record<string, unknown>>();
-  return result.results.map((row) => ({
-    cpv: String(row.cpv),
-    label: String(row.cpv_label),
-    count: Number(row.c),
-  }));
-}
-
-export type TenderDivision = { division: string; count: number };
 
 export async function listTenderDivisions(limit = 60): Promise<TenderDivision[]> {
   const database = await ensureDatabase();
