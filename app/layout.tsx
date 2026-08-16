@@ -14,9 +14,9 @@ export const metadata: Metadata = {
     type: "website", locale: "uk_UA", siteName: "Вимога",
     title: "Вимога — тендер вартий вашого часу?",
     description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
-    images: [{ url: "/og-vymoha-v2.png", width: 1730, height: 909, alt: "Вимога — AI tender intelligence" }],
+    images: [{ url: "/og-vymoha-v2.webp", width: 1200, height: 630, alt: "Вимога — AI tender intelligence" }],
   },
-  twitter: { card: "summary_large_image", title: "Вимога", description: "Рішення по тендеру за хвилини, не години.", images: ["/og-vymoha-v2.png"] },
+  twitter: { card: "summary_large_image", title: "Вимога", description: "Рішення по тендеру за хвилини, не години.", images: ["/og-vymoha-v2.webp"] },
   manifest: "/manifest.webmanifest",
   icons: { icon: "/favicon-v2.png", shortcut: "/favicon-v2.png", apple: "/apple-touch-icon.png" },
 };
