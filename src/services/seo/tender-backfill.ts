@@ -172,6 +172,7 @@ export async function backfillTenderPages(budgetTenders = 300): Promise<TenderPa
     const last = page[page.length - 1]?.dateModified ?? null;
     if (last === cursor) { finished = true; break; }
     cursor = last;
+    await setState(cursor, false);
     if (!last || new Date(last).getTime() <= stopBeforeMs) { finished = true; break; }
   }
 

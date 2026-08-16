@@ -72,10 +72,10 @@ const worker = {
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
-    ctx.waitUntil(indexCompletedTenders().catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
-    ctx.waitUntil(backfillMarketIndex().catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
-    ctx.waitUntil(refreshRecentTenderPages().catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
-    ctx.waitUntil(backfillTenderPages().catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(indexCompletedTenders(40).catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
+    ctx.waitUntil(backfillMarketIndex(60).catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(refreshRecentTenderPages(50).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(backfillTenderPages(70).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
   },
 };
 
