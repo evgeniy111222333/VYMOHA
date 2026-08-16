@@ -560,6 +560,28 @@ export async function listDistinctBuyers(limit = 500): Promise<BuyerRef[]> {
   }));
 }
 
+export type MarketOverview = {
+  totalTenders: number;
+  avgParticipants: number;
+  singleBidderRate: number;
+};
+
+export async function getMarketOverview(): Promise<MarketOverview> {
+  const database = await ensureDatabase();
+  const row = await database.prepare(
+    `SELECT COUNT(*) AS total, AVG(participants) AS avg_p, SUM(CASE WHEN participants <= 1 THEN 1 ELSE 0 END) AS single
+     FROM market_tenders
+     WHERE participants > 0`,
+  ).first<{ total: number; avg_p: number | null; single: number | null }>();
+  const total = Number(row?.total ?? 0);
+  const single = Number(row?.single ?? 0);
+  return {
+    totalTenders: total,
+    avgParticipants: Number(row?.avg_p ?? 0),
+    singleBidderRate: total > 0 ? single / total : 0,
+  };
+}
+
 export async function getBuyerName(edrpou: string): Promise<string | null> {
   const database = await ensureDatabase();
   const row = await database.prepare(
