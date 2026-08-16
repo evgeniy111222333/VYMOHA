@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { TenderCard } from "@/components/seo/TenderCard";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { getBuyerName, listPublicTenderCardsByBuyer } from "@/src/infrastructure/storage/repository";
+import { SITE_ORIGIN } from "@/src/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,15 @@ export default async function ZamovnykPage({ params }: { params: Promise<{ edrpo
   return (
     <main>
       <SiteHeader />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Головна", item: SITE_ORIGIN },
+          { "@type": "ListItem", position: 2, name: "Закупівлі", item: `${SITE_ORIGIN}/tendery` },
+          { "@type": "ListItem", position: 3, name },
+        ],
+      }} />
       <section className="library-page">
         <div className="container">
           <span className="section-kicker">Замовник {edrpou}</span>

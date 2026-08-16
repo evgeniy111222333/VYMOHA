@@ -63,6 +63,15 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
             <aside>Матеріал має інформаційний характер. Для спірних або дорогих закупівель залучіть фахівця з публічних закупівель.</aside>
           </div>
         </div>
+        <div className="container guide-page__related">
+          <span className="section-kicker">База знань</span>
+          <h2>Читайте також</h2>
+          <div>
+            {guides.filter((item) => item.slug !== guide.slug).map((item) => (
+              <Link key={item.slug} href={`/guides/${item.slug}`} className="button button--ghost">{item.title}</Link>
+            ))}
+          </div>
+        </div>
       </article>
       <SiteFooter />
     </main>

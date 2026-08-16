@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { ArrowUpRight } from "lucide-react";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { listTenderCpvGroups } from "@/src/infrastructure/storage/repository";
+import { SITE_ORIGIN } from "@/src/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,14 @@ export default async function TenderyPage() {
   return (
     <main>
       <SiteHeader />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Головна", item: SITE_ORIGIN },
+          { "@type": "ListItem", position: 2, name: "Тендери", item: `${SITE_ORIGIN}/tendery` },
+        ],
+      }} />
       <section className="library-page">
         <div className="container">
           <span className="section-kicker">Каталог закупівель</span>

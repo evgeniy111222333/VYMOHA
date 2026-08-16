@@ -35,6 +35,24 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           logo: "https://vymoha.com/brand-mark-v2.png",
           description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
         }} />
+        <JsonLd data={{
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "Вимога",
+          url: "https://vymoha.com",
+          inLanguage: "uk-UA",
+        }} />
+        <JsonLd data={{
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Вимога",
+          applicationCategory: "BusinessApplication",
+          operatingSystem: "Web",
+          url: "https://vymoha.com",
+          description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
+          inLanguage: "uk-UA",
+          offers: { "@type": "Offer", price: "149", priceCurrency: "UAH" },
+        }} />
         <MotionEffects />
         {children}
       </body>
