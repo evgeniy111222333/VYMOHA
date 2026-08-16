@@ -129,11 +129,11 @@ function isNonIndexablePath(pathname: string): boolean {
  * → історія → оцінка здоров'я з алертами.
  */
 async function runAllBackfills(): Promise<void> {
-  await indexCompletedTenders(30).catch((error) => {
+  await indexCompletedTenders(5).catch((error) => {
     void captureError({ source: "cron", route: "job:index-market", error });
     return { indexed: 0, fetched: 0, completed: 0 };
   });
-  await backfillMarketIndex(50).catch((error) => {
+  await backfillMarketIndex(10).catch((error) => {
     void captureError({ source: "cron", route: "job:market-backfill", error });
     return { processed: 0, completed: 0, indexed: 0, cursor: null, finished: false };
   });
@@ -141,12 +141,12 @@ async function runAllBackfills(): Promise<void> {
 }
 
 async function runSeoBackfillAndMonitor(): Promise<void> {
-  const refresh = await refreshRecentTenderPages(50).catch((error) => {
+  const refresh = await refreshRecentTenderPages(10).catch((error) => {
     void captureError({ source: "cron", route: "job:refresh", error });
     return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
   });
   await recordBackfillRun("refresh", refresh).catch(() => {});
-  const history = await backfillTenderPages(70).catch((error) => {
+  const history = await backfillTenderPages(15).catch((error) => {
     void captureError({ source: "cron", route: "job:history", error });
     return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
   });
