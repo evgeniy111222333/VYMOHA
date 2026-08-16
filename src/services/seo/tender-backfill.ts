@@ -1,6 +1,5 @@
 import { ensureDatabase } from "@/db/runtime";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
-import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { fetchTender } from "@/src/infrastructure/prozorro/client";
 import {
   getPublicTenderSummary,
@@ -75,13 +74,11 @@ async function processFeedItems(items: FeedItem[]): Promise<{ upserted: number; 
     if (existing && await isPublicSummaryFresh(existing, item.dateModified)) return "skipped";
     try {
       const tender = await fetchTender(item.id);
-      let buyerContext;
-      try {
-        buyerContext = tender.buyerEdrpou ? await fetchBuyerContext(tender.buyerEdrpou) : undefined;
-      } catch {
-        buyerContext = undefined;
-      }
-      const analysis = analyzeTender(tender, undefined, new Date(), buyerContext, "quick");
+      // Buyer context пропускається навмисно: це збагачення, а не ядро
+      // публічної сторінки, і воно подвоює кількість підзапитів, впираючись
+      // у ліміт Worker'а ("too many subrequests"). On-demand шлях сторінки
+      // довантажує buyer context при потребі.
+      const analysis = analyzeTender(tender, undefined, new Date(), undefined, "quick");
       await upsertPublicTenderSummary({ analysis });
       return "upserted";
     } catch {

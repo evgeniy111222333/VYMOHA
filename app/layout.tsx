@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { MotionEffects } from "@/components/site/MotionEffects";
+import { ErrorReporter } from "@/components/seo/ErrorReporter";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/src/lib/seo";
 import "./globals.css";
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           offers: { "@type": "Offer", price: "149", priceCurrency: "UAH" },
         }} />
         <MotionEffects />
+        <ErrorReporter />
         {children}
       </body>
     </html>

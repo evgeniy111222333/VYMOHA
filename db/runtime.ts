@@ -147,6 +147,13 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare(`CREATE TABLE IF NOT EXISTS seo_alert_state (
       check_name TEXT PRIMARY KEY, last_status TEXT NOT NULL, last_alert_at TEXT NOT NULL
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS error_events (
+      id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL UNIQUE, source TEXT NOT NULL,
+      route TEXT, error_name TEXT NOT NULL, error_message TEXT NOT NULL,
+      stack TEXT, context_json TEXT NOT NULL DEFAULT '{}',
+      severity TEXT NOT NULL DEFAULT 'error', count INTEGER NOT NULL DEFAULT 1,
+      first_seen TEXT NOT NULL, last_seen TEXT NOT NULL
+    )`),
   ]);
   await ensureUserAccountColumns(database);
   await database.batch([
@@ -185,6 +192,7 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_region_completed ON market_tenders(region, completed_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_seo_backfill_runs_created ON seo_backfill_runs(created_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_seo_health_events_created ON seo_health_events(created_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_error_events_last_seen ON error_events(last_seen)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
 }

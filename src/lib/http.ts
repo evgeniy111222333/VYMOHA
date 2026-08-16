@@ -31,6 +31,9 @@ export function apiError(error: unknown): Response {
   const isSyntaxError = error instanceof SyntaxError;
   if (!(error instanceof HttpError) && !(error instanceof SecurityError) && !isSyntaxError) {
     console.error("Unhandled API error", error);
+    void import("@/src/services/observability/errors")
+      .then(({ captureError }) => captureError({ source: "server", error }))
+      .catch(() => {});
   }
   
   if (error instanceof HttpError) {

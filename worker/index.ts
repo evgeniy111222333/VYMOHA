@@ -5,6 +5,7 @@ import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
 import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
 import { backfillTenderPages, refreshRecentTenderPages } from "@/src/services/seo/tender-backfill";
 import { recordBackfillRun, runSeoMonitoring } from "@/src/services/seo/health";
+import { captureError, runErrorMonitoring } from "@/src/services/observability/errors";
 import { canonicalHostRedirectUrl } from "@/src/lib/canonical-host";
 
 interface Env {
@@ -68,7 +69,16 @@ const worker = {
       }, allowedWidths);
     }
 
-    const response = await handler.fetch(request, env, ctx);
+    let response: Response;
+    try {
+      response = await handler.fetch(request, env, ctx);
+    } catch (error) {
+      ctx.waitUntil(captureError({ source: "server", route: url.pathname, error, context: { method: request.method } }).catch(() => {}));
+      response = new Response("Внутрішня помилка сервера. Спробуйте ще раз.", {
+        status: 500,
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      });
+    }
     return withSecurityHeaders(response, request);
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
@@ -117,17 +127,30 @@ function isNonIndexablePath(pathname: string): boolean {
  * → історія → оцінка здоров'я з алертами.
  */
 async function runAllBackfills(): Promise<void> {
-  await indexCompletedTenders(30).catch(() => ({ indexed: 0, fetched: 0, completed: 0 }));
-  await backfillMarketIndex(50).catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false }));
+  await indexCompletedTenders(30).catch((error) => {
+    void captureError({ source: "cron", route: "job:index-market", error });
+    return { indexed: 0, fetched: 0, completed: 0 };
+  });
+  await backfillMarketIndex(50).catch((error) => {
+    void captureError({ source: "cron", route: "job:market-backfill", error });
+    return { processed: 0, completed: 0, indexed: 0, cursor: null, finished: false };
+  });
   await runSeoBackfillAndMonitor();
 }
 
 async function runSeoBackfillAndMonitor(): Promise<void> {
-  const refresh = await refreshRecentTenderPages(50).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false }));
+  const refresh = await refreshRecentTenderPages(50).catch((error) => {
+    void captureError({ source: "cron", route: "job:refresh", error });
+    return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
+  });
   await recordBackfillRun("refresh", refresh).catch(() => {});
-  const history = await backfillTenderPages(70).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false }));
+  const history = await backfillTenderPages(70).catch((error) => {
+    void captureError({ source: "cron", route: "job:history", error });
+    return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
+  });
   await recordBackfillRun("history", history).catch(() => {});
   await runSeoMonitoring().catch(() => ({ issues: 0, alertsSent: 0 }));
+  await runErrorMonitoring().catch(() => ({ issues: 0, alertsSent: 0 }));
 }
 
 export default worker;
