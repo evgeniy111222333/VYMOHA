@@ -131,6 +131,31 @@ export function scoreTender(
   };
 }
 
+export function isTenderActive(status: string): boolean {
+  return ACTIVE_STATUSES.has(status);
+}
+
+/**
+ * What-if: яким був би бал, якби цей тендер був відкритий зараз.
+ * Перераховує реальну модель scoreTender на синтетичному тендері з
+ * активним статусом і комфортним дедлайном (+10 діб) — жодних вигаданих
+ * чисел, дельти факторів беруться з тієї ж моделі, що й справжній бал.
+ */
+export function simulateActiveScore(
+  tender: NormalizedTender,
+  now = new Date(),
+  company?: CompanyProfile,
+  buyerContext?: BuyerContext,
+  marketContext?: MarketContext,
+): ScoreBreakdown {
+  const synthetic: NormalizedTender = {
+    ...tender,
+    status: "active.tendering",
+    deadline: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+  return scoreTender(synthetic, company, now, buyerContext, marketContext);
+}
+
 export type MultiVectorScoringInput = {
   /**
    * Deterministic score calculated from Prozorro metadata before the model

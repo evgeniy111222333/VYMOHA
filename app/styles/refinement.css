@@ -69,11 +69,12 @@ h1, h2 { font-family: var(--font-display), var(--font-body), sans-serif; }
 
 .site-header {
   position: fixed;
-  background: color-mix(in srgb, var(--paper) 84%, transparent);
-  border-bottom-color: rgba(16, 18, 15, .14);
-  backdrop-filter: blur(18px) saturate(135%);
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
 }
-.site-header__inner { min-height: 88px; }
+.site-header__inner { min-height: 80px; }
 .site-nav { gap: 38px; font-size: 12px; font-weight: 650; letter-spacing: .015em; }
 .site-nav a { position: relative; padding: 8px 0; }
 .site-nav a::after { content: ""; position: absolute; inset: auto 0 2px; height: 2px; background: var(--acid); transform: scaleX(0); transform-origin: right; transition: transform .25s ease; }

@@ -47,9 +47,6 @@ function isDeadlineClosed(tender: NormalizedTender, now: Date): boolean {
 }
 
 function buildSummary(verdict: TenderAnalysis["verdict"], openCount: number, tender: NormalizedTender, now: Date, mode: AnalysisMode, marketContext?: MarketContext, competitionRisk?: CompetitionRisk): string {
-  const suffix = mode === "quick"
-    ? " Повний аналіз доступний у платних рівнях — кнопка нижче."
-    : "";
   const marketSentence = buildMarketSentence(tender, marketContext);
   const competitionSentence = buildCompetitionSentence(competitionRisk);
   const base = verdict === "go"
@@ -59,7 +56,7 @@ function buildSummary(verdict: TenderAnalysis["verdict"], openCount: number, ten
       : isDeadlineClosed(tender, now)
         ? "Подання пропозицій завершено — це головна причина низького балу. Відповідність вашої компанії та зміст файлів у швидкому режимі не оцінювались."
         : "Виявлено стоп-фактори. Спершу усуньте критичні розбіжності та перевірте файли закупівлі.";
-  return `${base}${suffix}${marketSentence}${competitionSentence}`;
+  return `${base}${marketSentence}${competitionSentence}`;
 }
 
 export function buildMarketSentence(tender: NormalizedTender, marketContext?: MarketContext): string {

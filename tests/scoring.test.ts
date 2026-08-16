@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
-import { calculateWeightedMatrixScore, scoreTender } from "@/src/domain/tender/scoring";
+import { calculateWeightedMatrixScore, scoreTender, simulateActiveScore } from "@/src/domain/tender/scoring";
 import { tenderFixture } from "./fixtures";
 
 const now = new Date("2026-08-01T12:00:00+03:00");
@@ -155,5 +155,34 @@ describe("tender scoring", () => {
     expect(quick.requirements.some((item) => item.id === "award-criteria" && item.status === "met")).toBe(true);
     expect(quick.requirements.some((item) => item.id === "clarifications")).toBe(true);
     expect(quick.risks.some((item) => item.id === "enquiry-closed")).toBe(true);
+  });
+
+  it("simulates the score of a closed tender as if it were open, using the real model", () => {
+    const closed = tenderFixture({ deadline: "2026-07-30T12:00:00+03:00" });
+    const real = scoreTender(closed, undefined, now);
+    expect(real.verdict).toBe("no-go");
+
+    const simulated = simulateActiveScore(closed, now);
+    // 54 base + 14 active + 8 comfortable deadline = 76, capped to 69 (no profile).
+    expect(simulated.score).toBe(69);
+    expect(simulated.verdict).toBe("maybe");
+    expect(simulated.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "procedure-active", points: 14 }),
+      expect.objectContaining({ id: "deadline-comfortable", points: 8 }),
+    ]));
+    expect(simulated.factors).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "deadline-closed" }),
+    ]));
+  });
+
+  it("restores an active status for a terminal (completed) tender in simulation", () => {
+    const completed = tenderFixture({ status: "complete", deadline: "2026-07-30T12:00:00+03:00" });
+    const simulated = simulateActiveScore(completed, now);
+    expect(simulated.factors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "procedure-active", points: 14 }),
+    ]));
+    expect(simulated.factors).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "procedure-inactive" }),
+    ]));
   });
 });

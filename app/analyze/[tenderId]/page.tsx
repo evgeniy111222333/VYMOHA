@@ -8,12 +8,14 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
+import { simulateActiveScore } from "@/src/domain/tender/scoring";
 import { fetchTender, TenderNotFoundError, extractTenderReference } from "@/src/infrastructure/prozorro/client";
 import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { getPublicTenderSummary, isPublicSummaryFresh, upsertPublicTenderSummary } from "@/src/infrastructure/storage/repository";
 import { getGuide } from "@/src/content/guides";
 import { SITE_ORIGIN } from "@/src/lib/seo";
 import { BuyerContextCard } from "@/components/analyzer/BuyerContextCard";
+import { PublicTenderHero } from "@/components/analyzer/PublicTenderHero";
 import { ScoreExplanation } from "@/components/analyzer/ScoreExplanation";
 import { TenderDocumentList } from "@/components/analyzer/TenderDocumentList";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
@@ -71,7 +73,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tenderId:
     description,
     alternates: { canonical: `/analyze/${tenderId.toUpperCase()}` },
     openGraph: {
-      title: `${tender.title} — попереднє рішення Vymoha`,
+      title: `${tender.title} — попередня оцінка Vymoha`,
       description,
       url: `/analyze/${tenderId.toUpperCase()}`,
       type: "article",
@@ -91,6 +93,11 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
   if (!loaded) notFound();
   const { analysis, cached } = loaded;
   const tender = analysis.tender;
+
+  const now = new Date();
+  const simulated = simulateActiveScore(tender, now, undefined, analysis.buyerContext, analysis.marketContext);
+  const deadlineDate = tender.deadline ? new Date(tender.deadline) : null;
+  const isExpired = deadlineDate ? deadlineDate.getTime() < now.getTime() : false;
 
   const user = await getAuthUser();
   const account = user ? await ensureUserAccount({ id: user.userId, email: user.email, name: user.displayName }) : null;
@@ -147,20 +154,14 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
           </a>
         </header>
 
-        <section className="public-analyze__summary">
-          <div className={`public-score public-score--${analysis.verdict}`}>
-            <strong>{analysis.score}</strong>
-            <span>/100</span>
-            <small>{verdictLabels[analysis.verdict]}</small>
-          </div>
-          <div className="public-analyze__facts">
-            <span><small>Бюджет</small><b>{amount}</b></span>
-            <span><small>Дедлайн</small><b>{tender.deadline ? new Intl.DateTimeFormat("uk-UA", { dateStyle: "medium", timeStyle: "short" }).format(new Date(tender.deadline)) : "не вказано"}</b></span>
-            <span><small>CPV</small><b>{tender.cpvCode ?? "—"}</b></span>
-            <span><small>Документів</small><b>{tender.documents.filter((doc) => doc.title.toLowerCase() !== "sign.p7s").length}</b></span>
-          </div>
-          <p className="public-analyze__lede">{analysis.summary}</p>
-        </section>
+        <PublicTenderHero
+          analysis={analysis}
+          amountFormatted={amount}
+          simulatedScore={simulated.score}
+          simulatedVerdict={simulated.verdict}
+          simulatedFactors={simulated.factors}
+          isExpired={isExpired}
+        />
 
         <div className="public-analyze__grid">
           <ScoreExplanation analysis={analysis} />
@@ -174,7 +175,7 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
             <span className="section-kicker">Потрібно більше?</span>
             <h2>Швидка перевірка — це фільтр. <em>Для рішення потрібен повний аналіз.</em></h2>
 
-            <p>Поглиблений рівень прочитає до 5 PDF-файлів, складе матрицю вимог з посиланнями на сторінки, підготує питання замовнику та оцінить ризики дискваліфікації.</p>
+            <p>Поглиблений рівень прочитає всі файли ТД, складе матрицю кваліфікаційних вимог, знайде приховані ризики та підготує чорновий запит замовнику.</p>
             <ul>
               <li><ScanSearch size={16} /> Розбір тендерної документації з цитатами</li>
               <li><FileText size={16} /> Матриця вимог і ризиків за категоріями</li>
@@ -191,12 +192,12 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
           </div>
         </section>
 
-        <details className="public-analyze__details">
+        <details className="public-analyze__details" open>
           <summary>
             <span><Gauge size={16} /> Як рахується бал</span>
             <ChevronDown size={16} />
           </summary>
-          <p>Швидка перевірка — детерміністична евристика на основі відкритих даних Prozorro. Враховує статус процедури, дедлайн, наявність тендерного забезпечення, обсяг документів, кваліфікаційні критерії та історію замовника (відхилення, середня кількість учасників). Бал не перевищує 69 без підтвердженого профілю компанії. <Link href="/analyze">Перевірити інший тендер</Link>.</p>
+          <p>Швидка перевірка — детерміністична евристика на основі відкритих даних Prozorro. Враховує статус процедури, дедлайн, наявність тендерного забезпечення, обсяг документів, кваліфікаційні критерії та історію замовника. <Link href="/analyze">Перевірити інший тендер</Link>.</p>
         </details>
 
         {relatedGuides.length > 0 && (
