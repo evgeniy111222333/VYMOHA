@@ -1,6 +1,7 @@
 import { guides } from "@/src/content/guides";
 import {
   countPublicTenderSummaries,
+  listAllTenderClasses,
   listDistinctBuyers,
   listPublicTenderSitemapEntries,
   listTenderDivisions,
@@ -95,12 +96,17 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (shardParam === "catalog") {
-    const [divisions, buyers] = await Promise.all([listTenderDivisions(500), listDistinctBuyers(2000)]);
+    const [divisions, classes, buyers] = await Promise.all([listTenderDivisions(500), listAllTenderClasses(3, 2000), listDistinctBuyers(2000)]);
     const urls: SitemapUrl[] = [
       ...divisions.map((division) => ({
         loc: `${SITE_ORIGIN}/tendery/${division.division}`,
         changefreq: "weekly" as const,
         priority: 0.5,
+      })),
+      ...classes.map((entry) => ({
+        loc: `${SITE_ORIGIN}/tendery/${entry.division}/${entry.cls}`,
+        changefreq: "weekly" as const,
+        priority: 0.45,
       })),
       ...buyers.map((buyer) => ({
         loc: `${SITE_ORIGIN}/zamovnyky/${buyer.edrpou}`,

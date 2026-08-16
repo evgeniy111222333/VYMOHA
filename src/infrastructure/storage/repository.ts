@@ -472,6 +472,47 @@ export async function listTenderDivisions(limit = 60): Promise<TenderDivision[]>
   }));
 }
 
+export type TenderClass = { cls: string; count: number };
+
+export type TenderClassEntry = { division: string; cls: string; count: number };
+
+export async function listAllTenderClasses(minCount = 3, limit = 500): Promise<TenderClassEntry[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT substr(cpv_code, 1, 2) AS div, substr(cpv_code, 1, 5) AS cls, COUNT(*) AS c
+     FROM public_tender_summaries
+     WHERE cpv_code IS NOT NULL
+     GROUP BY substr(cpv_code, 1, 5)
+     HAVING COUNT(*) >= ?
+     ORDER BY c DESC
+     LIMIT ?`,
+  ).bind(Math.max(1, Math.floor(minCount)), Math.min(Math.max(Math.floor(limit), 1), 5000)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    division: String(row.div),
+    cls: String(row.cls),
+    count: Number(row.c),
+  }));
+}
+
+export async function listTenderClasses(division: string, minCount = 3, limit = 100): Promise<TenderClass[]> {
+  const digits = division.replace(/\D/g, "").slice(0, 2);
+  if (!digits) return [];
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT substr(cpv_code, 1, 5) AS cls, COUNT(*) AS c
+     FROM public_tender_summaries
+     WHERE substr(cpv_code, 1, 2) = ?
+     GROUP BY substr(cpv_code, 1, 5)
+     HAVING COUNT(*) >= ?
+     ORDER BY c DESC
+     LIMIT ?`,
+  ).bind(digits, Math.max(1, Math.floor(minCount)), Math.min(Math.max(Math.floor(limit), 1), 200)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    cls: String(row.cls),
+    count: Number(row.c),
+  }));
+}
+
 export async function listPublicTenderCardsByCpv(cpvPrefix: string, limit = 200): Promise<PublicTenderCard[]> {
   const digits = cpvPrefix.replace(/\D/g, "").slice(0, 8);
   if (!digits) return [];
