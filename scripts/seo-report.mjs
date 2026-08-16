@@ -42,13 +42,17 @@ async function cfQuery(query) {
 }
 
 async function fetchSitemapCounts() {
-  const counts = { tenders: 0, catalog: 0, staticUrls: 0 };
-  const tender = await (await fetch(`${ORIGIN}/sitemap.xml?shard=0`)).text();
-  const catalog = await (await fetch(`${ORIGIN}/sitemap.xml?shard=catalog`)).text();
-  const staticXml = await (await fetch(`${ORIGIN}/sitemap.xml?shard=static`)).text();
-  counts.tenders = (tender.match(/<loc>/g) ?? []).length;
-  counts.catalog = (catalog.match(/<loc>/g) ?? []).length;
-  counts.staticUrls = (staticXml.match(/<loc>/g) ?? []).length;
+  const counts = { tenders: 0, catalog: 0, staticUrls: 0, health: [] };
+  const shards = ["static", "catalog", "0"];
+  for (const shard of shards) {
+    const res = await fetch(`${ORIGIN}/sitemap.xml?shard=${shard}`);
+    if (!res.ok) counts.health.push(`sitemap shard "${shard}" HTTP ${res.status}`);
+    const xml = await res.text();
+    if (!res.ok) continue;
+    if (shard === "0") counts.tenders = (xml.match(/<loc>/g) ?? []).length;
+    if (shard === "catalog") counts.catalog = (xml.match(/<loc>/g) ?? []).length;
+    if (shard === "static") counts.staticUrls = (xml.match(/<loc>/g) ?? []).length;
+  }
   return counts;
 }
 
@@ -90,6 +94,12 @@ console.log(`  Static pages: ${counts.staticUrls}`);
 console.log(`  Tender pages: ${counts.tenders}`);
 console.log(`  Catalog pages: ${counts.catalog}`);
 console.log(`  Total: ${counts.staticUrls + counts.tenders + counts.catalog}`);
+if (counts.health.length) {
+  console.log("  ⚠️ Health issues:");
+  for (const issue of counts.health) console.log(`    - ${issue}`);
+} else {
+  console.log("  Health: OK (all shards 200)");
+}
 
 if (cfToken) {
   const days = 7;

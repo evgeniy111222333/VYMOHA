@@ -4,6 +4,7 @@ import handler from "vinext/server/app-router-entry";
 import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
 import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
 import { backfillTenderPages, refreshRecentTenderPages } from "@/src/services/seo/tender-backfill";
+import { recordBackfillRun, runSeoMonitoring } from "@/src/services/seo/health";
 import { canonicalHostRedirectUrl } from "@/src/lib/canonical-host";
 
 interface Env {
@@ -74,8 +75,7 @@ const worker = {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
     ctx.waitUntil(indexCompletedTenders(40).catch(() => ({ indexed: 0, fetched: 0, completed: 0 })));
     ctx.waitUntil(backfillMarketIndex(60).catch(() => ({ processed: 0, completed: 0, indexed: 0, cursor: null, finished: false })));
-    ctx.waitUntil(refreshRecentTenderPages(50).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
-    ctx.waitUntil(backfillTenderPages(70).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false })));
+    ctx.waitUntil(runSeoBackfillAndMonitor());
   },
 };
 
@@ -111,6 +111,14 @@ function withSecurityHeaders(response: Response, request: Request): Response {
 
 function isNonIndexablePath(pathname: string): boolean {
   return ["/api", "/auth", "/dashboard"].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+async function runSeoBackfillAndMonitor(): Promise<void> {
+  const refresh = await refreshRecentTenderPages(50).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false }));
+  await recordBackfillRun("refresh", refresh).catch(() => {});
+  const history = await backfillTenderPages(70).catch(() => ({ processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false }));
+  await recordBackfillRun("history", history).catch(() => {});
+  await runSeoMonitoring().catch(() => ({ issues: 0, alertsSent: 0 }));
 }
 
 export default worker;

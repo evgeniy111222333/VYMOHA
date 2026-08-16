@@ -1,5 +1,7 @@
 type TenderChangeEmail = { to: string; tenderExternalId: string; sourceUrl: string; previousVersion: string | null; currentVersion: string };
 
+export type HealthAlertInput = { to: string; issues: Array<{ check: string; severity: "warn" | "error"; detail: string }> };
+
 const BRAND = {
   night: "#080a08",
   card: "#101410",
@@ -220,6 +222,59 @@ function formatDate(iso: string | null): string {
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
+}
+
+export async function sendHealthAlertEmail(input: HealthAlertInput, apiKey?: string, from = "VYMOHA <updates@vymoha.com>"): Promise<"sent" | "not-configured" | "failed"> {
+  if (!apiKey) return "not-configured";
+
+  const subject = `⚠️ Вимога: проблеми з SEO-моніторингом (${input.issues.length})`;
+  const issueRows = input.issues.map((issue) => {
+    const label = issue.severity === "error" ? "🔴 Критично" : "🟡 Попередження";
+    return `${label} — ${issue.check}\n${escapeHtml(issue.detail)}`;
+  }).join("\n\n");
+
+  const text = [
+    "ВИМОГА — SEO-моніторинг",
+    "==============================",
+    "Виявлено проблеми з фоновим наповненням:",
+    "",
+    issueRows,
+    "",
+    "Перевірити стан: https://vymoha.com/dashboard/admin",
+    "==============================",
+  ].join("\n");
+
+  const html = `<!doctype html>
+<html lang="uk"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:${BRAND.night};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.night};">
+  <tr><td align="center" style="padding:40px 14px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:${BRAND.card};border:1px solid ${BRAND.border};border-radius:16px;overflow:hidden;">
+      <tr><td style="padding:22px 28px;background:${BRAND.cardHeader};border-bottom:1px solid ${BRAND.borderSubtle};font-size:19px;font-weight:900;color:#ffffff;">ВИМ<span style="color:${BRAND.signal};">О</span>ГА <span style="font-size:12px;color:${BRAND.faint};font-weight:600;">· моніторинг</span></td></tr>
+      <tr><td style="padding:28px;">
+        <h1 style="margin:0 0 16px;font-size:20px;font-weight:800;color:#ffffff;">Проблеми з фоновим наповненням</h1>
+        ${input.issues.map((issue) => `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;background:#141913;border:1px solid #253123;border-radius:10px;">
+            <tr><td style="padding:13px 16px;">
+              <div style="font-size:10px;color:${issue.severity === "error" ? "#ff6b6b" : "#ffb800"};text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">${issue.severity === "error" ? "Критично" : "Попередження"}</div>
+              <div style="font-size:13px;color:${BRAND.muted};">${escapeHtml(issue.detail)}</div>
+            </td></tr>
+          </table>`).join("")}
+        <a href="https://vymoha.com/dashboard/admin" style="display:block;background:${BRAND.signal};color:#090b09;padding:14px 20px;border-radius:9px;font-size:14px;font-weight:800;text-align:center;text-decoration:none;margin-top:16px;">Перевірити стан →</a>
+      </td></tr>
+      <tr><td style="padding:18px 28px;background:${BRAND.cardHeader};border-top:1px solid ${BRAND.borderSubtle};font-size:11px;color:${BRAND.faint};">Автоматичне сповіщення SEO-моніторингу vymoha.com</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+    body: JSON.stringify({ from, to: [input.to], subject, text, html }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return response.ok ? "sent" : "failed";
 }
 
 

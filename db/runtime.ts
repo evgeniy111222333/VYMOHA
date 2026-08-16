@@ -135,6 +135,18 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare(`CREATE TABLE IF NOT EXISTS market_index_progress (
       key TEXT PRIMARY KEY, cursor TEXT, finished INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL
     )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS seo_backfill_runs (
+      id TEXT PRIMARY KEY, job TEXT NOT NULL, processed INTEGER NOT NULL DEFAULT 0,
+      upserted INTEGER NOT NULL DEFAULT 0, skipped INTEGER NOT NULL DEFAULT 0,
+      failed INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS seo_health_events (
+      id TEXT PRIMARY KEY, check_name TEXT NOT NULL, status TEXT NOT NULL,
+      detail TEXT NOT NULL, created_at TEXT NOT NULL
+    )`),
+    database.prepare(`CREATE TABLE IF NOT EXISTS seo_alert_state (
+      check_name TEXT PRIMARY KEY, last_status TEXT NOT NULL, last_alert_at TEXT NOT NULL
+    )`),
   ]);
   await ensureUserAccountColumns(database);
   await database.batch([
@@ -171,6 +183,8 @@ async function initialize(database: D1Database): Promise<void> {
     database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_cpv5_completed ON market_tenders(cpv5, completed_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_cpv3_completed ON market_tenders(cpv3, completed_at)"),
     database.prepare("CREATE INDEX IF NOT EXISTS idx_market_tenders_region_completed ON market_tenders(region, completed_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_seo_backfill_runs_created ON seo_backfill_runs(created_at)"),
+    database.prepare("CREATE INDEX IF NOT EXISTS idx_seo_health_events_created ON seo_health_events(created_at)"),
   ]);
   await database.prepare("PRAGMA optimize").run();
 }
