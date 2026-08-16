@@ -5,8 +5,10 @@ import { FeatureGrid } from "@/components/marketing/FeatureGrid";
 import { Hero } from "@/components/marketing/Hero";
 import { Pricing } from "@/components/marketing/Pricing";
 import { ProductProof } from "@/components/marketing/ProductProof";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { faqItems } from "@/src/content/faq";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -30,6 +32,15 @@ export default function HomePage() {
       <FeatureGrid />
       <Pricing />
       <Faq />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.map(({ question, answer }) => ({
+          "@type": "Question",
+          name: question,
+          acceptedAnswer: { "@type": "Answer", text: answer },
+        })),
+      }} />
       <SiteFooter />
     </main>
   );

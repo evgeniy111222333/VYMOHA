@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { MotionEffects } from "@/components/site/MotionEffects";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_URL } from "@/src/lib/seo";
 import "./globals.css";
 
@@ -25,7 +26,18 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="uk">
-      <body><MotionEffects />{children}</body>
+      <body>
+        <JsonLd data={{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "Вимога",
+          url: "https://vymoha.com",
+          logo: "https://vymoha.com/brand-mark-v2.png",
+          description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
+        }} />
+        <MotionEffects />
+        {children}
+      </body>
     </html>
   );
 }

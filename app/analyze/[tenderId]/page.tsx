@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronDown, ExternalLink, FileText, Gauge, LockKeyhole, ScanSearch, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ExternalLink, FileText, Gauge, LockKeyhole, ScanSearch, ShieldAlert } from "lucide-react";
 import { getAuthUser, signInPath, safeReturnPath } from "@/app/auth";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { ensureUserAccount } from "@/src/infrastructure/storage/accounts";
@@ -10,6 +11,8 @@ import { analyzeTender } from "@/src/domain/tender/analyzer";
 import { fetchTender, TenderNotFoundError, extractTenderReference } from "@/src/infrastructure/prozorro/client";
 import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
 import { getPublicTenderSummary, isPublicSummaryFresh, upsertPublicTenderSummary } from "@/src/infrastructure/storage/repository";
+import { getGuide } from "@/src/content/guides";
+import { SITE_ORIGIN } from "@/src/lib/seo";
 import { BuyerContextCard } from "@/components/analyzer/BuyerContextCard";
 import { ScoreExplanation } from "@/components/analyzer/ScoreExplanation";
 import { TenderDocumentList } from "@/components/analyzer/TenderDocumentList";
@@ -20,6 +23,12 @@ export const dynamic = "force-dynamic";
 const TENDER_ID_PATTERN = /UA-\d{4}-\d{2}-\d{2}-\d{6}(?:-[a-z])?/i;
 
 const verdictLabels = { go: "Можна заходити", maybe: "Потрібна перевірка", "no-go": "Не заходити" } as const;
+
+const RELATED_GUIDE_SLUGS: Record<TenderAnalysis["verdict"], string[]> = {
+  go: ["dokumenty-dlia-uchasti", "analohichnyi-dohovir"],
+  maybe: ["dokumenty-dlia-uchasti", "prychyny-vidkhylennia"],
+  "no-go": ["prychyny-vidkhylennia", "dokumenty-dlia-uchasti"],
+};
 
 function isValidTenderId(value: string): boolean {
   return TENDER_ID_PATTERN.test(value);
@@ -103,9 +112,22 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
       ? "Запустити поглиблений аналіз"
       : "Купити кредити";
 
+  const relatedGuides = RELATED_GUIDE_SLUGS[analysis.verdict]
+    .map((slug) => getGuide(slug))
+    .filter((guide): guide is NonNullable<typeof guide> => Boolean(guide));
+
   return (
     <main className="public-analyze">
       <SiteHeader />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Головна", item: SITE_ORIGIN },
+          { "@type": "ListItem", position: 2, name: "Перевірити тендер", item: `${SITE_ORIGIN}/analyze` },
+          { "@type": "ListItem", position: 3, name: tender.title },
+        ],
+      }} />
       <article className="container public-analyze__article">
         <header className="public-analyze__head">
           <div>
@@ -176,6 +198,20 @@ export default async function PublicTenderPage({ params }: { params: Promise<{ t
           </summary>
           <p>Швидка перевірка — детерміністична евристика на основі відкритих даних Prozorro. Враховує статус процедури, дедлайн, наявність тендерного забезпечення, обсяг документів, кваліфікаційні критерії та історію замовника (відхилення, середня кількість учасників). Бал не перевищує 69 без підтвердженого профілю компанії. <Link href="/analyze">Перевірити інший тендер</Link>.</p>
         </details>
+
+        {relatedGuides.length > 0 && (
+          <section className="public-analyze__related" aria-label="Матеріали на тему">
+            <span className="section-kicker">Матеріали на тему</span>
+            <h2>Підготувати пропозицію без відхилення</h2>
+            <div>
+              {relatedGuides.map((guide) => (
+                <a key={guide.slug} className="button button--ghost" href={`/guides/${guide.slug}`}>
+                  {guide.title} <ArrowUpRight size={14} />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         <p className="public-analyze__disclaimer">{analysis.disclaimer}</p>
       </article>

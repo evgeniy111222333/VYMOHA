@@ -13,6 +13,7 @@
     "test:render": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:all": "npm run test && npm run test:render",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "indexnow": "node scripts/ping-indexnow.mjs",
     "db:generate": "drizzle-kit generate",
     "prod:local": "npm run build && npx wrangler dev -c dist/server/wrangler.json"
   },

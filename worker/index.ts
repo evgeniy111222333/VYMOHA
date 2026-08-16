@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
 import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
+import { canonicalHostRedirectUrl } from "@/src/lib/canonical-host";
 
 interface Env {
   ASSETS: Fetcher;
@@ -49,6 +50,11 @@ const worker = {
       return Response.redirect(url.href, 301);
     }
 
+    const canonicalRedirect = canonicalHostRedirectUrl(url);
+    if (canonicalRedirect) {
+      return Response.redirect(canonicalRedirect, 301);
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
@@ -87,11 +93,11 @@ function withSecurityHeaders(response: Response, request: Request): Response {
   }
   headers.set("Content-Security-Policy", [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://public-api.prozorro.gov.ua",
+    "connect-src 'self' https://public-api.prozorro.gov.ua https://cloudflareinsights.com",
     "object-src 'none'",
     "base-uri 'self'",
     "frame-ancestors 'none'",

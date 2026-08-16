@@ -35,6 +35,9 @@ yarn-error.log*
 /scratch/
 /audit/
 
+# google search console service account (never commit)
+/gsc-key.json
+
 # vercel
 .vercel
 

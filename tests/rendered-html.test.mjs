@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { after, before, test } from "node:test";
 
 const baseUrl = "http://127.0.0.1:3199";
+const origin = "https://vymoha.com";
 let server;
 
 before(async () => {
@@ -40,6 +41,13 @@ function hasRobotsDirective(html, directive) {
   return new RegExp(`<meta[^>]+(?:name="robots"[^>]+content="${directive}"|content="${directive}"[^>]+name="robots")`, "i").test(html);
 }
 
+function jsonLdBlocks(html) {
+  return [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)]
+    .map((match) => match[1])
+    .map((raw) => { try { return JSON.parse(raw); } catch { return null; } })
+    .filter(Boolean);
+}
+
 test("server-renders the production marketing page", async () => {
   const response = await render();
   assert.equal(response.status, 200);
@@ -56,6 +64,16 @@ test("server-renders the production marketing page", async () => {
   assert.doesNotMatch(html, /Your site is taking shape|react-loading-skeleton|codex-preview/i);
 });
 
+test("emits structured data on the marketing page", async () => {
+  const html = await (await render()).text();
+  const blocks = jsonLdBlocks(html);
+  assert.ok(blocks.some((block) => block["@type"] === "Organization" && block.url === origin && block.logo === `${origin}/brand-mark-v2.png`), "Organization JSON-LD missing");
+  const faq = blocks.find((block) => block["@type"] === "FAQPage");
+  assert.ok(faq, "FAQPage JSON-LD missing");
+  assert.equal(faq.mainEntity.length, 6);
+  assert.ok(faq.mainEntity.every((item) => item["@type"] === "Question" && item.acceptedAnswer["@type"] === "Answer"));
+});
+
 test("renders crawlable guide and legal pages", async () => {
   const [guide, privacy, robots] = await Promise.all([
     render("/guides/dokumenty-dlia-uchasti"),
@@ -70,6 +88,20 @@ test("renders crawlable guide and legal pages", async () => {
   assert.match(await robots.text(), /Sitemap:/);
 });
 
+test("emits Article and Breadcrumb structured data on guide pages", async () => {
+  const html = await (await render("/guides/prychyny-vidkhylennia")).text();
+  const blocks = jsonLdBlocks(html);
+  const article = blocks.find((block) => block["@type"] === "Article");
+  assert.ok(article, "Article JSON-LD missing");
+  assert.equal(article.headline, "Причини відхилення тендерної пропозиції");
+  assert.equal(article.datePublished, "2026-08-01");
+  assert.equal(article.author["@type"], "Organization");
+  const crumbs = blocks.find((block) => block["@type"] === "BreadcrumbList");
+  assert.ok(crumbs, "BreadcrumbList JSON-LD missing");
+  assert.equal(crumbs.itemListElement.length, 3);
+  assert.equal(crumbs.itemListElement[2].name, "Причини відхилення тендерної пропозиції");
+});
+
 test("uses self-canonicals for public legal pages and noindex for private routes", async () => {
   const [home, privacy, terms, signIn, register, dashboard, robots] = await Promise.all([
     render("/"), render("/privacy"), render("/terms"),
@@ -77,14 +109,14 @@ test("uses self-canonicals for public legal pages and noindex for private routes
     fetch(`${baseUrl}/dashboard`, { redirect: "manual" }), render("/robots.txt"),
   ]);
 
-  assert.equal(canonical(await home.text()), "https://vymoha.app/");
+  assert.equal(canonical(await home.text()), `${origin}/`);
 
   const privacyHtml = await privacy.text();
-  assert.equal(canonical(privacyHtml), "https://vymoha.app/privacy");
+  assert.equal(canonical(privacyHtml), `${origin}/privacy`);
   assert.match(privacyHtml, /<title>Політика конфіденційності — Вимога<\/title>/);
 
   const termsHtml = await terms.text();
-  assert.equal(canonical(termsHtml), "https://vymoha.app/terms");
+  assert.equal(canonical(termsHtml), `${origin}/terms`);
   assert.match(termsHtml, /<title>Умови використання — Вимога<\/title>/);
 
   for (const response of [signIn, register]) {
@@ -100,6 +132,19 @@ test("uses self-canonicals for public legal pages and noindex for private routes
   assert.match(robotsText, /Disallow: \/dashboard/);
   assert.match(robotsText, /Disallow: \/api/);
   assert.doesNotMatch(robotsText, /Disallow: \/auth/);
+});
+
+test("points robots sitemap and all sitemap URLs at the canonical domain", async () => {
+  const robotsText = await (await render("/robots.txt")).text();
+  assert.match(robotsText, new RegExp(`Sitemap: ${origin.replace("/", "\\/")}\\/sitemap\\.xml`));
+
+  const sitemapText = await (await render("/sitemap.xml")).text();
+  assert.match(sitemapText, /<urlset[^>]*xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9"/);
+  const locs = [...sitemapText.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
+  assert.ok(locs.length >= 7, `expected at least 7 URLs, got ${locs.length}`);
+  assert.ok(locs.every((loc) => loc === origin || loc.startsWith(`${origin}/`)), `non-canonical URL found: ${locs.find((loc) => loc !== origin && !loc.startsWith(`${origin}/`))}`);
+  assert.equal(locs[0], origin);
+  assert.match(sitemapText, /<lastmod>2026-08-01<\/lastmod>/);
 });
 
 test("renders custom authentication and protects the dashboard", async () => {
