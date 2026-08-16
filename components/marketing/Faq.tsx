@@ -45,7 +45,7 @@ export function Faq() {
           {items.map(([question, answer], index) => (
             <details key={question}>
               <summary><i>{String(index + 1).padStart(2, "0")}</i>{question}<span>+</span></summary>
-              <p>{answer}</p>
+              <div className="faq__answer"><div><p>{answer}</p></div></div>
             </details>
           ))}
         </div>

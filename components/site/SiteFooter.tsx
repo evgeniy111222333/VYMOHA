@@ -13,6 +13,7 @@ export function SiteFooter() {
         <div><strong>Матеріали</strong><Link href="/guides">База знань</Link><Link href="/guides/dokumenty-dlia-uchasti">Документи для участі</Link><Link href="/guides/prychyny-vidkhylennia">Причини відхилення</Link></div>
         <div><strong>Правова інформація</strong><Link href="/privacy">Конфіденційність</Link><Link href="/terms">Умови використання</Link><a href="mailto:hello@vymoha.app">hello@vymoha.app</a></div>
       </div>
+      <div className="container site-footer__word" aria-hidden="true">ВИМ<em>О</em>ГА</div>
       <div className="container site-footer__bottom"><span>© 2026 Вимога</span><span>Дані про закупівлі: Prozorro</span></div>
     </footer>
   );

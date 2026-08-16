@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, BrainCircuit, Coins, FileCheck2, Gauge, LoaderCircle, LockKeyhole, ScanSearch } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, BrainCircuit, Check, Coins, FileCheck2, Gauge, LoaderCircle, LockKeyhole, ScanSearch } from "lucide-react";
 import { ANALYSIS_TIERS, type AnalysisTier } from "@/src/domain/billing/packages";
 import { formatSignals, SIGNAL_UNIT_SHORT } from "@/src/domain/billing/presentation";
 import type { TenderAnalysis } from "@/src/domain/tender/types";
@@ -19,6 +19,12 @@ type AnalyzerFormProps = {
 
 const tierIcons = { quick: Gauge, deep: ScanSearch, expert: BrainCircuit };
 
+const LOAD_STAGES: Record<AnalysisTier, string[]> = {
+  quick: ["З’єднання з Prozorro", "Структура закупівлі", "Оцінка строків і ризиків"],
+  deep: ["З’єднання з Prozorro", "Завантаження документів", "Читання таблиць і додатків", "Матриця вимог"],
+  expert: ["З’єднання з Prozorro", "Завантаження документів", "Глибокий розбір документації", "Питання замовнику", "Фінальний звіт"],
+};
+
 function tierPriceLabel(credits: number): string {
   if (credits === 0) return `0 ${SIGNAL_UNIT_SHORT} · базова`;
   return formatSignals(credits, true);
@@ -33,12 +39,21 @@ export function AnalyzerForm({
   const [analysis, setAnalysis] = useState<TenderAnalysis | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stage, setStage] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    const stages = LOAD_STAGES[tier];
+    const id = window.setInterval(() => setStage((value) => Math.min(value + 1, stages.length - 1)), 2100);
+    return () => window.clearInterval(id);
+  }, [loading, tier]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(""); setAnalysis(null);
     const tierConfig = ANALYSIS_TIERS[tier];
     if (tier !== "quick" && !signedIn) { window.location.href = signInHref; return; }
     if (tierConfig.credits > balance) { setError(`Потрібно ${formatSignals(tierConfig.credits)}. На балансі ${formatSignals(balance)}.`); return; }
+    setStage(0);
     setLoading(true);
     try {
       const response = await fetch("/api/analyze", {
@@ -95,6 +110,16 @@ export function AnalyzerForm({
         </div>
         {error && <div className="form-error" role="alert">{error}</div>}
       </form>
+      {loading && <div className="analyzer__loading" role="status" aria-live="polite">
+        <div className="analyzer__loading-bar"><i /></div>
+        <ol>
+          {LOAD_STAGES[tier].map((label, index) => (
+            <li key={label} className={index < stage ? "is-done" : index === stage ? "is-active" : ""}>
+              <Check size={12} />{label}
+            </li>
+          ))}
+        </ol>
+      </div>}
       {analysis && <AnalysisResult
         analysis={analysis}
         signedIn={signedIn}

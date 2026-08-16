@@ -23,7 +23,7 @@ export function FeatureGrid() {
         </div>
         <div className="capability-matrix">
           {capabilities.map((item, index) => (
-            <article key={item.code} data-reveal style={{ "--reveal-delay": `${index * 45}ms` } as CSSProperties}>
+            <article key={item.code} data-reveal data-spot style={{ "--reveal-delay": `${index * 45}ms` } as CSSProperties}>
               <header><span>{item.code}</span><item.icon size={18} /></header>
               <h3>{item.title}</h3><p>{item.text}</p><i>{String(index + 1).padStart(2, "0")}</i>
             </article>

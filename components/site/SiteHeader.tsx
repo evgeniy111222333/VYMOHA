@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getAuthUser } from "@/app/auth";
 import { Logo } from "@/components/brand/Logo";
+import { SiteHeaderNav } from "@/components/site/SiteHeaderNav";
 
 export async function SiteHeader() {
   const user = await getAuthUser();
@@ -34,11 +35,13 @@ export async function SiteHeader() {
               Увійти
             </Link>
           )}
-          <Link href="/#analyze" className="button button--small button--dark">
+          <Link href="/#analyze" className="button button--small button--dark" data-magnetic>
             Аналізувати <ArrowUpRight size={15} />
           </Link>
+          <SiteHeaderNav signedIn={Boolean(user)} />
         </div>
       </div>
+      <span className="site-header__progress" aria-hidden="true" />
     </header>
   );
 }

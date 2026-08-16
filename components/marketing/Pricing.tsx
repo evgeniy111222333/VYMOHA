@@ -19,10 +19,10 @@ export function Pricing() {
         </div>
         <div className="pricing-grid pricing-grid-v3">
           {CREDIT_PACKAGES.map((pack) => (
-            <article key={pack.id} className={pack.popular ? "price-card price-card--featured" : "price-card"} data-reveal>
+            <article key={pack.id} className={pack.popular ? "price-card price-card--featured" : "price-card"} data-reveal data-spot>
               {pack.popular && <span className="price-card__label">Найкраща точка входу</span>}
               <header><span>{pack.name}</span><Coins size={18} /></header>
-              <div className="price-card__credits"><strong>{pack.credits}</strong><i>сигналів</i></div>
+              <div className="price-card__credits"><strong data-count={pack.credits}>{pack.credits}</strong><i>сигналів</i></div>
               <div className="price-card__price"><b>{(pack.amountMinor / 100).toLocaleString("uk-UA")} ₴</b><span>одноразово</span></div>
               <p>{pack.description}</p>
               <ul>

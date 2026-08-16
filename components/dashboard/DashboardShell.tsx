@@ -1,18 +1,9 @@
-import { Activity, BarChart3, Building2, Coins, FileArchive, LayoutDashboard, LogOut, Radar, SearchCheck, Settings, ShieldCheck } from "lucide-react";
+import { Coins, LogOut, Settings } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
+import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import type { AuthUser } from "@/src/auth/types";
 import { formatSignals } from "@/src/domain/billing/presentation";
 import type { UserAccount } from "@/src/infrastructure/storage/accounts";
-
-const links = [
-  { href: "/dashboard", label: "Огляд", icon: LayoutDashboard },
-  { href: "/dashboard/tenders", label: "Мої перевірки", icon: SearchCheck },
-  { href: "/dashboard/monitoring", label: "Моніторинг", icon: Radar },
-  { href: "/dashboard/company", label: "Профіль компанії", icon: Building2 },
-  { href: "/dashboard/documents", label: "Документи", icon: FileArchive },
-  { href: "/dashboard/analytics", label: "Аналітика", icon: BarChart3 },
-  { href: "/dashboard/billing", label: "Сигнали", icon: Coins },
-];
 
 export function DashboardShell({ user, account, children }: { user: AuthUser; account: UserAccount; children: React.ReactNode }) {
   const identity = user.phone ?? user.email;
@@ -20,7 +11,7 @@ export function DashboardShell({ user, account, children }: { user: AuthUser; ac
     <div className="dashboard-shell">
       <aside className="dashboard-sidebar">
         <div className="dashboard-sidebar__top"><Logo /><span className="dashboard-sidebar__badge">beta</span></div>
-        <nav aria-label="Навігація кабінету">{links.map((link) => <a key={link.href} href={link.href}><link.icon size={18} />{link.label}</a>)}{account.role === "admin" && <><a href="/dashboard/admin" className="dashboard-admin-link"><ShieldCheck size={18} />Адміністратор</a><a href="/dashboard/admin/diagnostics" className="dashboard-admin-link"><Activity size={18} />Діагностика</a></>}</nav>
+        <DashboardNav isAdmin={account.role === "admin"} />
         <div className="dashboard-sidebar__bottom">
           <a href="/dashboard/settings"><Settings size={18} />Налаштування</a>
           <form action="/api/auth/sign-out" method="post"><button type="submit"><LogOut size={18} />Вийти</button></form>

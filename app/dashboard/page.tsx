@@ -14,11 +14,11 @@ export default async function DashboardPage() {
   const now = currentTimestamp();
   const isWelcomeBonus = account.creditBalance === 30 && account.totalCreditsPurchased === 0 && account.role !== "admin";
   
-  return <>{isWelcomeBonus && <div className="welcome-banner">
+  return <>{isWelcomeBonus && <div className="welcome-banner" data-reveal>
     <strong>🎉 Вітаємо у Vymoha!</strong>
     <p>Ми нарахували вам <b>30 безкоштовних сигналів</b>. Цього вистачить на 1 експертний або 2 поглиблені аналізи. Завантажте свій перший тендер просто зараз!</p>
     <Link href="/analyze" className="button button--primary">Зробити перший аналіз</Link>
-  </div>}<div className="dashboard-heading"><div><span className="section-kicker">Огляд</span><h1>Добрий день, {firstName(user.displayName)}.</h1><p>Командний центр рішень: баланс, ризики й тендери, які справді варті часу.</p></div><Link href="/analyze" className="button button--primary">Новий аналіз <ArrowRight size={16} /></Link></div><div className="stat-grid"><Stat icon={Coins} label="Сигнали" value={String(account.creditBalance)} note="для глибоких аналізів" /><Stat icon={SearchCheck} label="Перевірок" value={String(analyses.length)} note="у цьому просторі" /><Stat icon={Target} label="Середня оцінка" value={analyses.length ? `${average}/100` : "—"} note="за останні звіти" /><Stat icon={FileWarning} label="Потребують уваги" value={String(analyses.filter((item) => item.verdict !== "go").length)} note="maybe або no-go" /><Stat icon={Clock3} label="Дедлайн цього тижня" value={String(analyses.filter((item) => item.deadline && new Date(item.deadline).getTime() - now < 604_800_000).length)} note="активні перевірки" /></div>      <section className="dashboard-card dashboard-card--table">
+  </div>}<div className="dashboard-heading" data-reveal><div><span className="section-kicker">Огляд</span><h1>Добрий день, {firstName(user.displayName)}.</h1><p>Командний центр рішень: баланс, ризики й тендери, які справді варті часу.</p></div><Link href="/analyze" className="button button--primary">Новий аналіз <ArrowRight size={16} /></Link></div><div className="stat-grid"><Stat icon={Coins} label="Сигнали" value={String(account.creditBalance)} note="для глибоких аналізів" index={0} /><Stat icon={SearchCheck} label="Перевірок" value={String(analyses.length)} note="у цьому просторі" index={1} /><Stat icon={Target} label="Середня оцінка" value={analyses.length ? `${average}/100` : "—"} note="за останні звіти" index={2} /><Stat icon={FileWarning} label="Потребують уваги" value={String(analyses.filter((item) => item.verdict !== "go").length)} note="maybe або no-go" index={3} /><Stat icon={Clock3} label="Дедлайн цього тижня" value={String(analyses.filter((item) => item.deadline && new Date(item.deadline).getTime() - now < 604_800_000).length)} note="активні перевірки" index={4} /></div>      <section className="dashboard-card dashboard-card--table" data-reveal>
         <div className="dashboard-card__heading">
           <div className="dashboard-card__heading-main">
             <span className="dashboard-card__kicker">Історія закупівель</span>
@@ -53,5 +53,5 @@ export default async function DashboardPage() {
       </section></>;
 }
 
-function Stat({ icon: Icon, label, value, note }: { icon: typeof SearchCheck; label: string; value: string; note: string }) { return <article className="stat-card"><div><Icon size={18} /><span>{label}</span></div><strong>{value}</strong><small>{note}</small></article>; }
+function Stat({ icon: Icon, label, value, note, index }: { icon: typeof SearchCheck; label: string; value: string; note: string; index: number }) { return <article className="stat-card" data-reveal data-spot style={{ "--reveal-delay": `${index * 60}ms` } as React.CSSProperties}><div><Icon size={18} /><span>{label}</span></div><strong>{value}</strong><small>{note}</small></article>; }
 function firstName(value: string): string { return value.split(/[\s@]/)[0] || "колего"; }

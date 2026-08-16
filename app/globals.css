@@ -8,6 +8,7 @@
 @import "./styles/analyzer-v3.css";
 @import "./styles/dashboard-v3.css";
 @import "./styles/auth.css";
+@import "./styles/v4.css";
 
 :root {
   --font-body: 'Manrope', sans-serif;
