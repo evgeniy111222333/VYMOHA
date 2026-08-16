@@ -82,7 +82,9 @@ const worker = {
     return withSecurityHeaders(response, request);
   },
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): void {
-    ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }));
+    ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }).catch((error) => {
+      void captureError({ source: "cron", route: "job:monitoring", error });
+    }));
     ctx.waitUntil(runAllBackfills());
   },
 };

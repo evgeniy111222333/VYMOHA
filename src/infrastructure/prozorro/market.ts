@@ -8,6 +8,7 @@ import {
   extractMarketSample, getMarketBackfillState, queryMarketSamples,
   setMarketBackfillState, upsertMarketTenders,
 } from "@/src/infrastructure/storage/market";
+import { captureError } from "@/src/services/observability/errors";
 
 const PORTAL_SEARCH_URL = "https://prozorro.gov.ua/api/search/tenders";
 const PORTAL_SUMMARY_URL = "https://prozorro.gov.ua/api/tenders";
@@ -22,12 +23,21 @@ type RawTender = Record<string, unknown> & { id: string };
 async function officialFetch(url: URL, init: RequestInit = {}): Promise<Response> {
   const allowed = url.hostname === "prozorro.gov.ua" || url.hostname === "public-api.prozorro.gov.ua";
   if (url.protocol !== "https:" || !allowed) throw new Error("Unsupported source");
-  return fetch(url, {
+  const response = await fetch(url, {
     ...init,
     headers: { accept: "application/json", "content-type": "application/json", "user-agent": "Vymoha/1.0 (+market)", ...init.headers },
     signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
     cache: "no-store",
   });
+  if (response.status === 429 || response.status >= 500) {
+    void captureError({
+      source: "external",
+      route: url.pathname.slice(0, 120),
+      error: { name: "ProzorroHttpError", message: `Prozorro ${response.status}` },
+      context: { statusCode: response.status },
+    });
+  }
+  return response;
 }
 
 /** Розв'язує зовнішній ID у internal, повертає повний запис тендера. */

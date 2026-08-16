@@ -96,14 +96,18 @@ export async function evaluateErrorAlerts(now = new Date()): Promise<ErrorIssue[
   const database = await ensureDatabase();
   const since = new Date(now.getTime() - 6 * 3_600_000).toISOString();
   const result = await database.prepare(
-    `SELECT source, route, error_name, count FROM error_events WHERE last_seen >= ? ORDER BY count DESC LIMIT 20`,
+    `SELECT source, route, error_name, count, first_seen FROM error_events WHERE last_seen >= ? ORDER BY count DESC LIMIT 30`,
   ).bind(since).all<Record<string, unknown>>();
   const issues: ErrorIssue[] = [];
   for (const row of result.results) {
     const count = Number(row.count);
-    if (count < 5) continue;
     const label = `${String(row.error_name)} (${String(row.source)}${row.route ? " · " + String(row.route) : ""})`;
-    issues.push({ check: `error-spike:${label}`, severity: "warn", detail: `${label} — ${count} разів за останні 6 год.` });
+    const isNew = String(row.first_seen) >= since;
+    if (count >= 5) {
+      issues.push({ check: `error-spike:${label}`, severity: "warn", detail: `${label} — ${count} разів за 6 год.` });
+    } else if (isNew && count >= 2) {
+      issues.push({ check: `error-new:${label}`, severity: "warn", detail: `Нова помилка за останні 6 год: ${label}.` });
+    }
   }
   return issues;
 }
@@ -129,6 +133,10 @@ async function markAlertSent(check: string, severity: "warn" | "error"): Promise
 }
 
 export async function runErrorMonitoring(): Promise<{ issues: number; alertsSent: number }> {
+  const database = await ensureDatabase();
+  await database.prepare("DELETE FROM error_events WHERE last_seen < ?")
+    .bind(new Date(Date.now() - 30 * 24 * 3_600_000).toISOString()).run();
+
   const issues = await evaluateErrorAlerts();
   let alertsSent = 0;
   const apiKey = runtimeEnv().RESEND_API_KEY;

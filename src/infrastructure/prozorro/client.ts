@@ -1,5 +1,6 @@
 import type { NormalizedTender, TenderRevision, TenderRevisionChange } from "@/src/domain/tender/types";
 import { HttpError } from "@/src/lib/http";
+import { captureError } from "@/src/services/observability/errors";
 
 const API_ROOT = "https://public-api.prozorro.gov.ua/api/2.5/tenders";
 const PORTAL_SUMMARY_ROOT = "https://prozorro.gov.ua/api/tenders";
@@ -134,10 +135,19 @@ async function resolveInternalId(externalId: string): Promise<string> {
 async function safeFetch(url: string): Promise<Response> {
   const parsed = new URL(url);
   if (parsed.protocol !== "https:" || parsed.hostname !== "public-api.prozorro.gov.ua") throw new Error("Заблоковано непідтримуване джерело даних.");
-  return fetch(parsed, {
+  const response = await fetch(parsed, {
     headers: { accept: "application/json", "user-agent": "Vymoha/1.0 (+tender-analysis)" },
     signal: AbortSignal.timeout(8_000), cache: "no-store",
   });
+  if (response.status === 429 || response.status >= 500) {
+    void captureError({
+      source: "external",
+      route: parsed.pathname.slice(0, 120),
+      error: { name: "ProzorroHttpError", message: `Prozorro ${response.status}` },
+      context: { statusCode: response.status },
+    });
+  }
+  return response;
 }
 
 function normalizeTender(raw: ApiTender): NormalizedTender {
