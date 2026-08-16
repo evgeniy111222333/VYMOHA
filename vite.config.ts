@@ -32,6 +32,11 @@ const localBindingConfig = {
       ]
     : [],
   triggers: { crons: ["*/15 * * * *"] },
+  routes: [
+    { pattern: "vymoha.com", custom_domain: true },
+    { pattern: "www.vymoha.com", custom_domain: true }
+  ],
+  workers_dev: true,
 };
 
 export default defineConfig(async () => {
