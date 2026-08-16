@@ -3,7 +3,7 @@ import {
   countPublicTenderSummaries,
   listDistinctBuyers,
   listPublicTenderSitemapEntries,
-  listTenderCpvGroups,
+  listTenderDivisions,
 } from "@/src/infrastructure/storage/repository";
 import { SITE_ORIGIN } from "@/src/lib/seo";
 
@@ -94,10 +94,10 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   if (shardParam === "catalog") {
-    const [groups, buyers] = await Promise.all([listTenderCpvGroups(500), listDistinctBuyers(2000)]);
+    const [divisions, buyers] = await Promise.all([listTenderDivisions(500), listDistinctBuyers(2000)]);
     const urls: SitemapUrl[] = [
-      ...groups.map((group) => ({
-        loc: `${SITE_ORIGIN}/tendery/${group.cpv}`,
+      ...divisions.map((division) => ({
+        loc: `${SITE_ORIGIN}/tendery/${division.division}`,
         changefreq: "weekly" as const,
         priority: 0.5,
       })),

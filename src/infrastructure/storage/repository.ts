@@ -477,6 +477,24 @@ export async function listTenderCpvGroups(limit = 60): Promise<TenderCpvGroup[]>
   }));
 }
 
+export type TenderDivision = { division: string; count: number };
+
+export async function listTenderDivisions(limit = 60): Promise<TenderDivision[]> {
+  const database = await ensureDatabase();
+  const result = await database.prepare(
+    `SELECT substr(cpv_code, 1, 2) AS div, COUNT(*) AS c
+     FROM public_tender_summaries
+     WHERE cpv_code IS NOT NULL
+     GROUP BY substr(cpv_code, 1, 2)
+     ORDER BY c DESC
+     LIMIT ?`,
+  ).bind(Math.min(Math.max(Math.floor(limit), 1), 500)).all<Record<string, unknown>>();
+  return result.results.map((row) => ({
+    division: String(row.div),
+    count: Number(row.c),
+  }));
+}
+
 export async function listPublicTenderCardsByCpv(cpvPrefix: string, limit = 200): Promise<PublicTenderCard[]> {
   const digits = cpvPrefix.replace(/\D/g, "").slice(0, 8);
   if (!digits) return [];
