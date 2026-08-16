@@ -319,7 +319,7 @@ export async function writeAuditEvent(input: {
   ).run();
 }
 
-const PUBLIC_SUMMARY_TTL_SECONDS = 30 * 60;
+const PUBLIC_SUMMARY_TTL_SECONDS = 4 * 60 * 60;
 const TERMINAL_SUMMARY_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function isTerminalTenderStatus(status: string): boolean {

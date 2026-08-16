@@ -11,7 +11,7 @@ import { analyzeTender } from "@/src/domain/tender/analyzer";
 import { simulateActiveScore } from "@/src/domain/tender/scoring";
 import { fetchTender, TenderNotFoundError, extractTenderReference } from "@/src/infrastructure/prozorro/client";
 import { fetchBuyerContext } from "@/src/infrastructure/prozorro/buyer-stats";
-import { getPublicTenderSummary, isPublicSummaryFresh, upsertPublicTenderSummary } from "@/src/infrastructure/storage/repository";
+import { consumeRateLimit, getPublicTenderSummary, isPublicSummaryFresh, upsertPublicTenderSummary } from "@/src/infrastructure/storage/repository";
 import { getGuide } from "@/src/content/guides";
 import { SITE_ORIGIN } from "@/src/lib/seo";
 import { BuyerContextCard } from "@/components/analyzer/BuyerContextCard";
@@ -38,22 +38,30 @@ function isValidTenderId(value: string): boolean {
 
 async function loadPublicAnalysis(externalId: string): Promise<{ analysis: TenderAnalysis; cached: boolean } | null> {
   const cached = await getPublicTenderSummary(externalId);
+  const parseCached = (): { analysis: TenderAnalysis; cached: boolean } | null => {
+    if (!cached) return null;
+    try {
+      return { analysis: JSON.parse(cached.resultJson) as TenderAnalysis, cached: true };
+    } catch {
+      return null;
+    }
+  };
+
   if (cached) {
     const fresh = await isPublicSummaryFresh(cached, cached.tenderDateModified);
-    if (fresh) {
-      try {
-        const parsed = JSON.parse(cached.resultJson) as TenderAnalysis;
-        return { analysis: parsed, cached: true };
-      } catch {
-        // fall through to recompute
-      }
-    }
+    if (fresh) return parseCached();
   }
+
+  // Rate-limit live fetches: масовий краул некешованих/прострочених сторінок
+  // не повинен спамити Prozorro. Понад ліміт віддаємо застарілий кеш.
+  const liveFetch = await consumeRateLimit("public:live-fetch", 200, 3_600);
+  if (!liveFetch.allowed) return parseCached();
 
   let tender;
   try { tender = await fetchTender(externalId); } catch (error) {
     if (error instanceof TenderNotFoundError) return null;
-    throw error;
+    // Тимчасовий збій (429/таймаут): віддаємо застарілий кеш замість 500.
+    return parseCached();
   }
   const buyerContext = tender.buyerEdrpou ? await fetchBuyerContext(tender.buyerEdrpou) : undefined;
   const analysis = analyzeTender(tender, undefined, new Date(), buyerContext, "quick");
