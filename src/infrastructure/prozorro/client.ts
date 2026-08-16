@@ -54,7 +54,7 @@ export async function fetchTender(value: string): Promise<NormalizedTender> {
 }
 
 /** Test seam: normalization is deterministic pure logic worth covering directly. */
-export function normalizeTenderForTest(raw: Record<string, unknown>): NormalizedTender {
+export function normalizeRawTender(raw: Record<string, unknown>): NormalizedTender {
   return normalizeTender(raw as ApiTender);
 }
 

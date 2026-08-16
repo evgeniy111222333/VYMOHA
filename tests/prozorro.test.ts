@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractTenderReference, fetchTender, normalizeTenderForTest } from "@/src/infrastructure/prozorro/client";
+import { extractTenderReference, fetchTender, normalizeRawTender } from "@/src/infrastructure/prozorro/client";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -77,7 +77,7 @@ describe("Prozorro tender normalization", () => {
   };
 
   it("deduplicates document revisions, keeps the newest version and drops signatures", () => {
-    const tender = normalizeTenderForTest(rawTender);
+    const tender = normalizeRawTender(rawTender);
     expect(tender.documents).toHaveLength(3);
     const biddingDoc = tender.documents.find((doc) => doc.id === "doc-1");
     expect(biddingDoc?.title).toBe("Тендерна документація.doc");
@@ -86,7 +86,7 @@ describe("Prozorro tender normalization", () => {
   });
 
   it("extracts procedure metadata previously discarded by the normalizer", () => {
-    const tender = normalizeTenderForTest(rawTender);
+    const tender = normalizeRawTender(rawTender);
     expect(tender.awardCriteria).toBe("lowestCost");
     expect(tender.enquiryDeadline).toBe("2026-08-18T00:00:00+03:00");
     expect(tender.complaintDeadline).toBe("2026-08-19T00:00:00+03:00");
@@ -99,7 +99,7 @@ describe("Prozorro tender normalization", () => {
   });
 
   it("flattens numeric qualification thresholds from structured criteria", () => {
-    const tender = normalizeTenderForTest(rawTender);
+    const tender = normalizeRawTender(rawTender);
     expect(tender.structuredCriteria[0]?.numericRequirements).toEqual([
       expect.objectContaining({ title: "Досвід", expectedValue: "true", minValue: "90" }),
     ]);
@@ -107,7 +107,7 @@ describe("Prozorro tender normalization", () => {
   });
 
   it("leaves optional collections undefined when the API omits them", () => {
-    const tender = normalizeTenderForTest({ ...rawTender, questions: [], milestones: [], criteria: [] });
+    const tender = normalizeRawTender({ ...rawTender, questions: [], milestones: [], criteria: [] });
     expect(tender.clarifications).toBeUndefined();
     expect(tender.milestones).toBeUndefined();
   });

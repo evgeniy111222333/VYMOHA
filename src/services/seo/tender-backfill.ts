@@ -1,6 +1,7 @@
 import { ensureDatabase } from "@/db/runtime";
 import { analyzeTender } from "@/src/domain/tender/analyzer";
-import { fetchTender } from "@/src/infrastructure/prozorro/client";
+import { fetchRawTenderEnvelope, normalizeRawTender } from "@/src/infrastructure/prozorro/client";
+import { extractMarketSample, upsertMarketTenders } from "@/src/infrastructure/storage/market";
 import {
   getPublicTenderSummary,
   isPublicSummaryFresh,
@@ -73,13 +74,18 @@ async function processFeedItems(items: FeedItem[]): Promise<{ upserted: number; 
     const existing = await getPublicTenderSummary(item.tenderID);
     if (existing && await isPublicSummaryFresh(existing, item.dateModified)) return "skipped";
     try {
-      const tender = await fetchTender(item.id);
-      // Buyer context пропускається навмисно: це збагачення, а не ядро
-      // публічної сторінки, і воно подвоює кількість підзапитів, впираючись
-      // у ліміт Worker'а ("too many subrequests"). On-demand шлях сторінки
-      // довантажує buyer context при потребі.
+      // Один фетч живить і SEO-сторінку, і ринковий індекс — без дублювання
+      // запитів до Prozorro. Buyer context пропускається (збагачення, не ядро),
+      // щоб лишитись у межах ліміту підзапитів Worker.
+      const envelope = await fetchRawTenderEnvelope(item.id);
+      const raw = envelope.data;
+      const tender = normalizeRawTender(raw);
       const analysis = analyzeTender(tender, undefined, new Date(), undefined, "quick");
       await upsertPublicTenderSummary({ analysis });
+      if (tender.status === "complete") {
+        const sample = extractMarketSample(raw);
+        if (sample) await upsertMarketTenders([sample]);
+      }
       return "upserted";
     } catch {
       return "failed";

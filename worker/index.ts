@@ -2,7 +2,6 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { runMonitoringCycle } from "@/src/services/monitoring/run-cycle";
-import { backfillMarketIndex, indexCompletedTenders } from "@/src/infrastructure/prozorro/market";
 import { backfillTenderPages, refreshRecentTenderPages } from "@/src/services/seo/tender-backfill";
 import { recordBackfillRun, runSeoMonitoring } from "@/src/services/seo/health";
 import { captureError, runErrorMonitoring } from "@/src/services/observability/errors";
@@ -85,7 +84,7 @@ const worker = {
     ctx.waitUntil(runMonitoringCycle({ notificationApiKey: env.RESEND_API_KEY, notificationFrom: env.NOTIFICATION_FROM }).catch((error) => {
       void captureError({ source: "cron", route: "job:monitoring", error });
     }));
-    ctx.waitUntil(runAllBackfills());
+    ctx.waitUntil(runSeoBackfillAndMonitor());
   },
 };
 
@@ -124,29 +123,17 @@ function isNonIndexablePath(pathname: string): boolean {
 }
 
 /**
- * Backfill-задачі виконуються послідовно, щоб не перевантажувати Prozorro
- * одночасними запитами (rate-limit 429). Ринковий індекс → refresh активних
- * → історія → оцінка здоров'я з алертами.
+ * SEO-backfill виконується послідовно і в межах ліміту підзапитів Worker.
+ * Кожен фетч тендера живить і SEO-сторінку, і ринковий індекс (для завершених),
+ * тому окремий ринковий backfill більше не потрібен.
  */
-async function runAllBackfills(): Promise<void> {
-  await indexCompletedTenders(5).catch((error) => {
-    void captureError({ source: "cron", route: "job:index-market", error });
-    return { indexed: 0, fetched: 0, completed: 0 };
-  });
-  await backfillMarketIndex(10).catch((error) => {
-    void captureError({ source: "cron", route: "job:market-backfill", error });
-    return { processed: 0, completed: 0, indexed: 0, cursor: null, finished: false };
-  });
-  await runSeoBackfillAndMonitor();
-}
-
 async function runSeoBackfillAndMonitor(): Promise<void> {
-  const refresh = await refreshRecentTenderPages(10).catch((error) => {
+  const refresh = await refreshRecentTenderPages(15).catch((error) => {
     void captureError({ source: "cron", route: "job:refresh", error });
     return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
   });
   await recordBackfillRun("refresh", refresh).catch(() => {});
-  const history = await backfillTenderPages(15).catch((error) => {
+  const history = await backfillTenderPages(25).catch((error) => {
     void captureError({ source: "cron", route: "job:history", error });
     return { processed: 0, upserted: 0, skipped: 0, failed: 0, cursor: null, finished: false };
   });
