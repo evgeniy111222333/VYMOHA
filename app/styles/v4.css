@@ -73,10 +73,12 @@ section[id], div[id] { scroll-margin-top: 96px; }
    ============================================================ */
 .site-header {
   position: fixed;
-  transition: background .35s ease, box-shadow .35s ease, border-color .35s ease;
+  height: 82px;
+  transition: background .35s ease, box-shadow .35s ease, border-color .35s ease, height .35s var(--ease-out);
 }
 .site-header__inner { transition: min-height .35s var(--ease-out); }
 .site-header.is-scrolled {
+  height: 62px;
   background: rgba(9, 11, 9, .74);
   border-bottom-color: rgba(255, 255, 255, .14);
   box-shadow: 0 18px 50px rgba(0, 0, 0, .38);
@@ -136,19 +138,17 @@ section[id], div[id] { scroll-margin-top: 96px; }
    HERO v4 — aurora, ticker, живий командний центр
    ============================================================ */
 .hero-v3__aurora { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
-.hero-v3__aurora i { position: absolute; border-radius: 50%; filter: blur(110px); will-change: transform; }
-.hero-v3__aurora i:nth-child(1) { width: 560px; height: 560px; left: -180px; top: -140px; background: radial-gradient(circle, rgba(168, 255, 42, .16), transparent 65%); animation: v4-aurora-a 19s ease-in-out infinite alternate; }
-.hero-v3__aurora i:nth-child(2) { width: 640px; height: 640px; right: -160px; bottom: -220px; background: radial-gradient(circle, rgba(141, 124, 255, .2), transparent 65%); animation: v4-aurora-b 23s ease-in-out infinite alternate; }
-.hero-v3__aurora i:nth-child(3) { width: 380px; height: 380px; left: 38%; top: 30%; background: radial-gradient(circle, rgba(91, 140, 255, .12), transparent 65%); animation: v4-aurora-a 27s ease-in-out infinite alternate-reverse; }
+.hero-v3__aurora i { position: absolute; border-radius: 50%; filter: blur(160px); will-change: transform; }
+.hero-v3__aurora i:nth-child(1) { width: 960px; height: 960px; right: -420px; bottom: -440px; background: radial-gradient(circle, rgba(141, 124, 255, .11), transparent 50%); animation: v4-aurora-b 23s ease-in-out infinite alternate; }
+.hero-v3__aurora i:nth-child(2) { width: 600px; height: 600px; left: 46%; top: 40%; background: radial-gradient(circle, rgba(91, 140, 255, .06), transparent 50%); animation: v4-aurora-a 27s ease-in-out infinite alternate-reverse; }
 
 .hero-v3 h1 em {
-  color: transparent;
-  background-image: linear-gradient(92deg, var(--signal) 20%, #e2ff9e 40%, var(--signal) 60%);
-  background-size: 220% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  animation: v4-shine 7s linear infinite;
+  color: var(--signal);
+  background: none;
+  -webkit-background-clip: border-box; background-clip: border-box;
+  animation: none;
 }
-.hero-v3 h1 em::after { background: linear-gradient(90deg, var(--signal) 0 12%, rgba(168, 255, 42, .72) 12% 72%, rgba(168, 255, 42, .2) 100%); }
+.hero-v3 h1 em::after { display: none; }
 
 /* командний центр: tilt + скан-промінь + живий бейдж */
 .command-center { position: relative; transform: perspective(1300px) rotateX(var(--tilt-x, 1deg)) rotateY(var(--tilt-y, -2deg)); transition: transform .4s var(--ease-out); }

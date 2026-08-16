@@ -14,7 +14,7 @@ const tickerItems = [
 export function Hero() {
   return <section className="hero hero-v3">
     <div className="hero-v3__glow" aria-hidden="true" />
-    <div className="hero-v3__aurora" aria-hidden="true"><i /><i /><i /></div>
+    <div className="hero-v3__aurora" aria-hidden="true"><i /><i /></div>
     <div className="hero-v3__watermark" aria-hidden="true">VYMOHA / TENDER INTELLIGENCE</div>
     <div className="container hero-v3__grid">
       <div className="hero-v3__copy" data-reveal>
