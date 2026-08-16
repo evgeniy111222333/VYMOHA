@@ -30,6 +30,7 @@ const STATIC_URLS: SitemapUrl[] = [
     lastmod: guide.updated,
   })),
   { loc: `${SITE_ORIGIN}/tendery`, changefreq: "daily", priority: 0.6 },
+  { loc: `${SITE_ORIGIN}/terminy`, changefreq: "monthly", priority: 0.5 },
   { loc: `${SITE_ORIGIN}/privacy`, changefreq: "yearly", priority: 0.2, lastmod: LEGAL_UPDATED_AT },
   { loc: `${SITE_ORIGIN}/terms`, changefreq: "yearly", priority: 0.2, lastmod: LEGAL_UPDATED_AT },
 ];
