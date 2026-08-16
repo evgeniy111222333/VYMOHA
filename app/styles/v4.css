@@ -213,6 +213,18 @@ section[id], div[id] { scroll-margin-top: 96px; }
 .price-card { transition: transform .35s var(--ease-out), box-shadow .35s ease; }
 .price-card__label { animation: v4-blink 2.6s ease-in-out infinite; }
 
+/* бейдж «Найкраща точка входу» — по центру верху, без накладання на заголовок.
+   `[data-spot] > *` вище змінює position на relative — тут явно повертаємо absolute. */
+.pricing-grid-v3 .price-card--featured { padding-top: 54px; }
+.pricing-grid-v3 .price-card__label {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
 /* ============================================================
    FAQ v4 — плавний акордеон
    ============================================================ */
