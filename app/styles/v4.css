@@ -362,6 +362,18 @@ section[id], div[id] { scroll-margin-top: 96px; }
 .bar-chart > div > div i { animation: v4-bar-grow 1.1s var(--ease-out) both; }
 @keyframes v4-bar-grow { from { width: 0; } }
 
+/* Інсайт-картка — темний акцент серед світлих dashboard-card.
+   .dashboard-card (v3) перебиває фон через однакову специфічність і пізніше
+   завантаження, тож тут чіпляємось за подвійний клас і повертаємо темну тему. */
+.dashboard-card.analytics-insight {
+  color: #f6f6ef;
+  background: linear-gradient(160deg, #171a17 0%, #0d100d 100%);
+  border-color: #171a17;
+}
+.dashboard-card.analytics-insight h2 { color: #f6f6ef; }
+.dashboard-card.analytics-insight p { color: #aeb4ae; }
+.dashboard-card.analytics-insight > span { color: #9ea59d; }
+
 /* ============================================================
    AUTH v4 — сценографія входу
    ============================================================ */
