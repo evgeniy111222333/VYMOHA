@@ -150,6 +150,16 @@ section[id], div[id] { scroll-margin-top: 96px; }
 }
 .hero-v3 h1 em::after { display: none; }
 
+/* Прибрати залишок старого .hero::after (зелене кільце-овал з refinement.css),
+   що «просочується» у .hero-v3: border/border-radius/width/top/opacity. */
+.hero-v3::after {
+  width: auto;
+  top: auto;
+  border: 0;
+  border-radius: 0;
+  opacity: 1;
+}
+
 /* командний центр: tilt + скан-промінь + живий бейдж */
 .command-center { position: relative; transform: perspective(1300px) rotateX(var(--tilt-x, 1deg)) rotateY(var(--tilt-y, -2deg)); transition: transform .4s var(--ease-out); }
 .command-center::after {
