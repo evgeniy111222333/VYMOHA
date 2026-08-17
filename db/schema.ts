@@ -325,3 +325,57 @@ export const marketIndexProgress = sqliteTable(
     updatedAt: text("updated_at").notNull(),
   },
 );
+
+export const seoBackfillRuns = sqliteTable(
+  "seo_backfill_runs",
+  {
+    id: text("id").primaryKey(),
+    job: text("job").notNull(),
+    processed: integer("processed").notNull().default(0),
+    upserted: integer("upserted").notNull().default(0),
+    skipped: integer("skipped").notNull().default(0),
+    failed: integer("failed").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_seo_backfill_runs_created").on(table.createdAt)],
+);
+
+export const seoHealthEvents = sqliteTable(
+  "seo_health_events",
+  {
+    id: text("id").primaryKey(),
+    checkName: text("check_name").notNull(),
+    status: text("status").notNull(),
+    detail: text("detail").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_seo_health_events_created").on(table.createdAt)],
+);
+
+export const seoAlertState = sqliteTable(
+  "seo_alert_state",
+  {
+    checkName: text("check_name").primaryKey(),
+    lastStatus: text("last_status").notNull(),
+    lastAlertAt: text("last_alert_at").notNull(),
+  },
+);
+
+export const errorEvents = sqliteTable(
+  "error_events",
+  {
+    id: text("id").primaryKey(),
+    fingerprint: text("fingerprint").notNull().unique(),
+    source: text("source").notNull(),
+    route: text("route"),
+    errorName: text("error_name").notNull(),
+    errorMessage: text("error_message").notNull(),
+    stack: text("stack"),
+    contextJson: text("context_json").notNull().default("{}"),
+    severity: text("severity").notNull().default("error"),
+    count: integer("count").notNull().default(1),
+    firstSeen: text("first_seen").notNull(),
+    lastSeen: text("last_seen").notNull(),
+  },
+  (table) => [index("idx_error_events_last_seen").on(table.lastSeen)],
+);
