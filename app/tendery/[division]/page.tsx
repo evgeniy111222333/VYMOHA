@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ division:
   if (cards.length === 0) return { title: "Категорія не знайдена" };
   const name = cpvDivisionName(division) ?? `Категорія CPV ${division}`;
   return {
-    title: `${name} — тендери Prozorro`,
+    title: `${name}: тендери Prozorro`,
     description: `Закупівлі Prozorro у категорії «${name}»: оцінка готовності, ризики та документи по кожному тендеру.`,
     alternates: { canonical: `/tendery/${division}` },
   };

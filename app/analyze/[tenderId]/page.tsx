@@ -73,15 +73,15 @@ export async function generateMetadata({ params }: { params: Promise<{ tenderId:
   const { tenderId } = await params;
   if (!isValidTenderId(tenderId)) return { title: "Закупівля не знайдена" };
   const loaded = await loadPublicAnalysis(tenderId.toUpperCase());
-  if (!loaded) return { title: "Закупівля не знайдена · Vymoha" };
+  if (!loaded) return { title: "Закупівля не знайдена" };
   const tender = loaded.analysis.tender;
   const description = `${verdictLabels[loaded.analysis.verdict]} · бал ${loaded.analysis.score}/100 · ${tender.buyer}. ${loaded.analysis.summary.slice(0, 140)}`;
   return {
-    title: `${tender.title} · Vymoha`,
+    title: tender.title,
     description,
     alternates: { canonical: `/analyze/${tenderId.toUpperCase()}` },
     openGraph: {
-      title: `${tender.title} — попередня оцінка Vymoha`,
+      title: `${tender.title} | Вимога`,
       description,
       url: `/analyze/${tenderId.toUpperCase()}`,
       type: "article",

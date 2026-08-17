@@ -7,7 +7,7 @@ import { SITE_ORIGIN } from "@/src/lib/seo";
 
 export const metadata: Metadata = {
   title: "Про сервіс",
-  description: "Вимога — сервіс попередньої перевірки закупівель Prozorro. Go/no-go аналіз, ризики та документи з доказами для кожного висновку.",
+  description: "Вимога: сервіс попередньої перевірки закупівель Prozorro. Go/no-go аналіз, ризики та документи з доказами для кожного висновку.",
   alternates: { canonical: "/pro-nas" },
 };
 

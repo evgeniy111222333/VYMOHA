@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/terms" },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Умови використання — Вимога",
+    title: "Умови використання | Вимога",
     description: "Умови використання сервісу Вимога та обмеження відповідальності.",
     url: "/terms",
   },

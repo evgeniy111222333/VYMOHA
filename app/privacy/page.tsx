@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
   robots: { index: true, follow: true },
   openGraph: {
-    title: "Політика конфіденційності — Вимога",
+    title: "Політика конфіденційності | Вимога",
     description: "Як Вимога обробляє, зберігає та захищає дані користувачів.",
     url: "/privacy",
   },

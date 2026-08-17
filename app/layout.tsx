@@ -7,19 +7,26 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: SITE_URL,
-  title: { default: "Вимога — перевірка тендерів Prozorro", template: "%s — Вимога" },
-  description: "Знайдіть стоп-фактори, документи й дедлайни тендера Prozorro до того, як команда витратить день на підготовку.",
+  title: { default: "Перевірка тендерів Prozorro | Вимога", template: "%s | Вимога" },
+  description: "Перевірте будь-який тендер Prozorro за хвилини: бал go/no-go, стоп-фактори, документи та ризики з доказами для кожного висновку. Без реєстрації.",
   applicationName: "Вимога",
   keywords: ["Prozorro", "тендери", "закупівлі Україна", "аналіз тендерної документації", "перевірка тендерної пропозиції", "ризики участі в тендері", "тендерне забезпечення"],
   openGraph: {
     type: "website", locale: "uk_UA", siteName: "Вимога",
-    title: "Вимога — тендер вартий вашого часу?",
+    title: "Вимога | тендер вартий вашого часу?",
     description: "Автоматичний go/no-go аналіз закупівель Prozorro з доказами для кожного висновку.",
-    images: [{ url: "/og-vymoha-v2.webp", width: 1200, height: 630, alt: "Вимога — AI tender intelligence" }],
+    images: [{ url: "/og-vymoha-v2.webp", width: 1200, height: 630, alt: "Вимога | AI tender intelligence" }],
   },
   twitter: { card: "summary_large_image", title: "Вимога", description: "Рішення по тендеру за хвилини, не години.", images: ["/og-vymoha-v2.webp"] },
   manifest: "/manifest.webmanifest",
-  icons: { icon: "/favicon-v2.png", shortcut: "/favicon-v2.png", apple: "/apple-touch-icon.png" },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-v2.png", type: "image/png" },
+    ],
+    shortcut: "/favicon-v2.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0a0b0a", colorScheme: "dark light" };
